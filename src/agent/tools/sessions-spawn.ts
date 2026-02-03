@@ -13,7 +13,7 @@ import { buildSubagentSystemPrompt } from "../subagent/announce.js";
 import { registerSubagentRun } from "../subagent/registry.js";
 
 const SessionsSpawnSchema = Type.Object({
-  task: Type.String({ description: "The task for the subagent to perform." }),
+  task: Type.String({ description: "The task for the subagent to perform.", minLength: 1 }),
   label: Type.Optional(
     Type.String({ description: "Human-readable label for this background task." }),
   ),
