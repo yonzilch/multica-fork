@@ -21,6 +21,8 @@ import { createListAgentsHandler } from "./rpc/handlers/list-agents.js";
 import { createCreateAgentHandler } from "./rpc/handlers/create-agent.js";
 import { createDeleteAgentHandler } from "./rpc/handlers/delete-agent.js";
 import { createUpdateGatewayHandler } from "./rpc/handlers/update-gateway.js";
+import { DeviceStore } from "./device-store.js";
+import { createVerifyHandler } from "./rpc/handlers/verify.js";
 
 export class Hub {
   private readonly agents = new Map<string, AsyncAgent>();
@@ -29,6 +31,8 @@ export class Hub {
   private readonly agentStreamCounters = new Map<string, number>();
   private readonly rpc: RpcDispatcher;
   private client: GatewayClient;
+  readonly deviceStore: DeviceStore;
+  private _onConfirmDevice: ((deviceId: string, agentId: string) => Promise<boolean>) | null = null;
   url: string;
   readonly path: string;
   readonly hubId: string;
@@ -42,8 +46,20 @@ export class Hub {
     this.url = url;
     this.path = path ?? "/ws";
     this.hubId = getHubId();
+    this.deviceStore = new DeviceStore();
 
     this.rpc = new RpcDispatcher();
+    this.rpc.register("verify", createVerifyHandler({
+      hubId: this.hubId,
+      deviceStore: this.deviceStore,
+      onConfirmDevice: (deviceId, agentId) => {
+        if (!this._onConfirmDevice) {
+          // No UI confirm handler registered (CLI mode etc.) — auto-approve
+          return Promise.resolve(true);
+        }
+        return this._onConfirmDevice(deviceId, agentId);
+      },
+    }));
     this.rpc.register("getAgentMessages", createGetAgentMessagesHandler());
     this.rpc.register("getHubInfo", createGetHubInfoHandler(this));
     this.rpc.register("listAgents", createListAgentsHandler(this));
@@ -101,7 +117,27 @@ export class Hub {
       // RPC request
       if (msg.action === RequestAction) {
         const payload = msg.payload as RequestPayload;
+        // verify RPC is always allowed (it IS the verification step)
+        if (payload.method === "verify") {
+          void this.handleRpc(msg.from, payload);
+          return;
+        }
+        // Other RPCs require verified device
+        if (!this.deviceStore.isAllowed(msg.from)) {
+          this.client.send<ResponseErrorPayload>(msg.from, ResponseAction, {
+            requestId: payload.requestId,
+            ok: false,
+            error: { code: "UNAUTHORIZED", message: "Device not verified" },
+          });
+          return;
+        }
         void this.handleRpc(msg.from, payload);
+        return;
+      }
+
+      // Non-RPC messages also require verified device
+      if (!this.deviceStore.isAllowed(msg.from)) {
+        console.warn(`[Hub] Rejected message from unverified device: ${msg.from}`);
         return;
       }
 
@@ -127,6 +163,16 @@ export class Hub {
     });
 
     return client;
+  }
+
+  /** Register a confirmation handler for new device connections (called by Desktop UI) */
+  setConfirmHandler(handler: ((deviceId: string, agentId: string) => Promise<boolean>) | null): void {
+    this._onConfirmDevice = handler;
+  }
+
+  /** Register a one-time token for device verification (called when QR code is generated) */
+  registerToken(token: string, agentId: string, expiresAt: number): void {
+    this.deviceStore.registerToken(token, agentId, expiresAt);
   }
 
   /** 重连到新的 Gateway 地址 */
@@ -234,7 +280,7 @@ export class Hub {
   private async handleRpc(from: string, request: RequestPayload): Promise<void> {
     const { requestId, method } = request;
     try {
-      const result = await this.rpc.dispatch(method, request.params);
+      const result = await this.rpc.dispatch(method, request.params, from);
       this.client.send<ResponseSuccessPayload>(from, ResponseAction, {
         requestId,
         ok: true,

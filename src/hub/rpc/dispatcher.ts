@@ -1,4 +1,4 @@
-export type RpcHandler = (params: unknown) => unknown | Promise<unknown>;
+export type RpcHandler = (params: unknown, from: string) => unknown | Promise<unknown>;
 
 export class RpcError extends Error {
   constructor(
@@ -22,11 +22,11 @@ export class RpcDispatcher {
   }
 
   /** Dispatch an RPC request to its handler */
-  async dispatch(method: string, params: unknown): Promise<unknown> {
+  async dispatch(method: string, params: unknown, from: string): Promise<unknown> {
     const handler = this.handlers.get(method);
     if (!handler) {
       throw new RpcError("METHOD_NOT_FOUND", `Unknown RPC method: ${method}`);
     }
-    return handler(params);
+    return handler(params, from);
   }
 }
