@@ -10,6 +10,7 @@
   },
   "files": [
     "out",
+    "build/trayTemplate*.png",
     "!**/.vscode/*",
     "!src/*",
     "!electron.vite.config.{js,ts,mjs,cjs}",

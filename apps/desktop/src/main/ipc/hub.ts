@@ -74,7 +74,7 @@ function getHub(): Hub {
 /**
  * Get the default agent.
  */
-function getDefaultAgent(): AsyncAgent | null {
+export function getDefaultAgent(): AsyncAgent | null {
   if (!hub || !defaultAgentId) return null
   return hub.getAgent(defaultAgentId) ?? null
 }

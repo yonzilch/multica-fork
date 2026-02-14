@@ -57,6 +57,7 @@ import path from 'node:path'
 import { registerAllIpcHandlers, initializeApp, cleanupAll, setupDeviceConfirmation, setAuthMainWindow, handleAuthDeepLink } from './ipc/index.js'
 import { appStateManager } from '@multica/core'
 import { createUpdater, AutoUpdater } from './updater/index.js'
+import { createTray, destroyTray } from './tray.js'
 
 // CJS output will have __dirname natively, but TypeScript source needs this for type checking
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -77,6 +78,7 @@ const forceOnboarding = process.argv.includes('--force-onboarding')
 
 let win: BrowserWindow | null
 let updater: AutoUpdater
+let isQuitting = false
 
 // ============================================================================
 // Custom Protocol for Auth (multica://)
@@ -108,8 +110,9 @@ if (!gotTheLock) {
   app.quit()
 } else {
   app.on('second-instance', (_event, commandLine) => {
-    // Focus window
+    // Show and focus window
     if (win) {
+      if (!win.isVisible()) win.show()
       if (win.isMinimized()) win.restore()
       win.focus()
     }
@@ -144,6 +147,14 @@ function createWindow() {
     return { action: 'deny' }
   })
 
+  // Hide window on close instead of quitting (tray keeps running)
+  win.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      win?.hide()
+    }
+  })
+
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
@@ -152,19 +163,20 @@ function createWindow() {
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
-  }
+  // Keep app running with tray on all platforms
 })
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
+  } else if (win && !win.isVisible()) {
+    win.show()
   }
 })
 
 app.on('before-quit', () => {
+  isQuitting = true
+  destroyTray()
   cleanupAll()
 })
 
@@ -187,16 +199,19 @@ app.whenReady().then(async () => {
 
   createWindow()
 
-  // Set up device confirmation flow and auth (requires window)
-  if (win) {
-    setupDeviceConfirmation(win)
-    setAuthMainWindow(win)
-  }
-
   // Initialize auto-updater
   const forceDevUpdate = process.env.FORCE_DEV_UPDATE === 'true'
   updater = createUpdater(forceDevUpdate)
   updater.setMainWindow(() => win)
+
+  // Set up device confirmation flow, auth, and tray (requires window)
+  if (win) {
+    setupDeviceConfirmation(win)
+    setAuthMainWindow(win)
+    createTray(win, {
+      onCheckForUpdates: () => updater.checkForUpdates(),
+    })
+  }
 
   // Auto-check for updates in production (or when forced in dev)
   const isDev = !!VITE_DEV_SERVER_URL
