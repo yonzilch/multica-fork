@@ -12,7 +12,6 @@ import {
   Timer,
   Trash2,
   Save,
-  X,
   Key,
   Link2,
   Clock,
@@ -34,9 +33,22 @@ import type {
   CreateAgentRequest,
   UpdateAgentRequest,
 } from "@multica/types";
-import { api } from "../../../lib/api";
-import { useAuth } from "../../../lib/auth-context";
-import { useWSEvent } from "../../../lib/ws-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@multica/ui/components/ui/dialog";
+import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
+import { Textarea } from "@multica/ui/components/ui/textarea";
+import { Label } from "@multica/ui/components/ui/label";
+import { api } from "@/shared/api";
+import { useAuthStore } from "@/features/auth";
+import { useWorkspaceStore } from "@/features/workspace";
+import { useWSEvent } from "@/features/realtime";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,18 +56,18 @@ import { useWSEvent } from "../../../lib/ws-context";
 
 const statusConfig: Record<AgentStatus, { label: string; color: string; dot: string }> = {
   idle: { label: "Idle", color: "text-muted-foreground", dot: "bg-muted-foreground" },
-  working: { label: "Working", color: "text-green-600", dot: "bg-green-500" },
-  blocked: { label: "Blocked", color: "text-yellow-600", dot: "bg-yellow-500" },
-  error: { label: "Error", color: "text-red-600", dot: "bg-red-500" },
+  working: { label: "Working", color: "text-success", dot: "bg-success" },
+  blocked: { label: "Blocked", color: "text-warning", dot: "bg-warning" },
+  error: { label: "Error", color: "text-destructive", dot: "bg-destructive" },
   offline: { label: "Offline", color: "text-muted-foreground/50", dot: "bg-muted-foreground/40" },
 };
 
 const taskStatusConfig: Record<string, { label: string; icon: typeof CheckCircle2; color: string }> = {
   queued: { label: "Queued", icon: Clock, color: "text-muted-foreground" },
-  dispatched: { label: "Dispatched", icon: Play, color: "text-blue-500" },
-  running: { label: "Running", icon: Loader2, color: "text-green-500" },
-  completed: { label: "Completed", icon: CheckCircle2, color: "text-green-600" },
-  failed: { label: "Failed", icon: XCircle, color: "text-red-500" },
+  dispatched: { label: "Dispatched", icon: Play, color: "text-info" },
+  running: { label: "Running", icon: Loader2, color: "text-success" },
+  completed: { label: "Completed", icon: CheckCircle2, color: "text-success" },
+  failed: { label: "Failed", icon: XCircle, color: "text-destructive" },
   cancelled: { label: "Cancelled", icon: XCircle, color: "text-muted-foreground" },
 };
 
@@ -120,55 +132,49 @@ function CreateAgentDialog({
   };
 
   return (
-    <>
-      <div
-        className="fixed inset-0 z-50 bg-black/10 backdrop-blur-xs"
-        onClick={onClose}
-      />
-      <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl bg-background p-6 shadow-lg ring-1 ring-foreground/10">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Create Agent</h2>
-          <button onClick={onClose} className="rounded-md p-1 hover:bg-accent">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create a new AI agent for your workspace.
-        </p>
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Agent</DialogTitle>
+          <DialogDescription>
+            Create a new AI agent for your workspace.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-5 space-y-4">
+        <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Name</label>
-            <input
+            <Label className="text-xs text-muted-foreground">Name</Label>
+            <Input
               autoFocus
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Deep Research Agent"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1"
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Description</label>
-            <input
+            <Label className="text-xs text-muted-foreground">Description</Label>
+            <Input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What does this agent do?"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1"
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Runtime</label>
+            <Label className="text-xs text-muted-foreground">Runtime</Label>
             <div className="relative mt-1.5">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setRuntimeOpen(!runtimeOpen)}
                 disabled={runtimes.length === 0}
-                className="flex w-full items-center gap-3 rounded-md border bg-background px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                className="flex w-full items-center gap-3 px-3 py-2.5 h-auto text-left text-sm"
               >
                 {selectedRuntime?.runtime_mode === "cloud" ? (
                   <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -181,7 +187,7 @@ function CreateAgentDialog({
                       {selectedRuntime?.name ?? "No runtime available"}
                     </span>
                     {selectedRuntime?.runtime_mode === "cloud" && (
-                      <span className="shrink-0 rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                      <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">
                         Cloud
                       </span>
                     )}
@@ -191,7 +197,7 @@ function CreateAgentDialog({
                   </div>
                 </div>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${runtimeOpen ? "rotate-180" : ""}`} />
-              </button>
+              </Button>
 
               {runtimeOpen && (
                 <>
@@ -217,7 +223,7 @@ function CreateAgentDialog({
                           <div className="flex items-center gap-2">
                             <span className="truncate font-medium">{device.name}</span>
                             {device.runtime_mode === "cloud" && (
-                              <span className="shrink-0 rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                              <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">
                                 Cloud
                               </span>
                             )}
@@ -226,7 +232,7 @@ function CreateAgentDialog({
                         </div>
                         <span
                           className={`h-2 w-2 shrink-0 rounded-full ${
-                            device.status === "online" ? "bg-green-500" : "bg-muted-foreground/40"
+                            device.status === "online" ? "bg-success" : "bg-muted-foreground/40"
                           }`}
                         />
                       </button>
@@ -238,23 +244,19 @@ function CreateAgentDialog({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
-          >
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             disabled={creating || !name.trim() || !selectedRuntime}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {creating ? "Creating..." : "Create"}
-          </button>
-        </div>
-      </div>
-    </>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -340,21 +342,21 @@ function SkillsTab({
           </p>
         </div>
         {isDirty && (
-          <button
+          <Button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            size="xs"
           >
             <Save className="h-3 w-3" />
             {saving ? "Saving..." : "Save"}
-          </button>
+          </Button>
         )}
       </div>
-      <textarea
+      <Textarea
         value={skills}
         onChange={(e) => setSkills(e.target.value)}
         placeholder={`# Agent Name\n\nDescribe what this agent does and how it should work.\n\n## Workflow\n1. Step one\n2. Step two\n3. Step three\n\n## Output Format\nDescribe the expected output...`}
-        className="h-96 w-full resize-none rounded-lg border bg-background px-4 py-3 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+        className="h-96 resize-none font-mono leading-relaxed"
       />
     </div>
   );
@@ -389,74 +391,73 @@ function AddToolDialog({
   };
 
   return (
-    <>
-      <div
-        className="fixed inset-0 z-50 bg-black/10 backdrop-blur-xs"
-        onClick={onClose}
-      />
-      <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-background p-6 shadow-lg ring-1 ring-foreground/10">
-        <h3 className="text-sm font-semibold">Add Tool</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Connect an external tool for this agent to use.
-        </p>
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Add Tool</DialogTitle>
+          <DialogDescription className="text-xs">
+            Connect an external tool for this agent to use.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Tool Name</label>
-            <input
+            <Label className="text-xs text-muted-foreground">Tool Name</Label>
+            <Input
               autoFocus
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Google Search, Slack, GitHub"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1"
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Description</label>
-            <input
+            <Label className="text-xs text-muted-foreground">Description</Label>
+            <Input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What does this tool do?"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Authentication</label>
+            <Label className="text-xs text-muted-foreground">Authentication</Label>
             <div className="mt-1.5 flex gap-2">
               {(["api_key", "oauth", "none"] as const).map((type) => (
-                <button
+                <Button
                   key={type}
+                  variant={authType === type ? "outline" : "ghost"}
+                  size="xs"
                   onClick={() => setAuthType(type)}
-                  className={`flex-1 rounded-md border px-2 py-1.5 text-xs transition-colors ${
+                  className={`flex-1 ${
                     authType === type
                       ? "border-primary bg-primary/5 font-medium"
-                      : "hover:bg-accent"
+                      : ""
                   }`}
                 >
                   {type === "api_key" ? "API Key" : type === "oauth" ? "OAuth" : "None"}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md px-3 py-1.5 text-sm hover:bg-accent">
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleAdd}
             disabled={!name.trim()}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             Add
-          </button>
-        </div>
-      </div>
-    </>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -507,22 +508,23 @@ function ToolsTab({
         </div>
         <div className="flex items-center gap-2">
           {isDirty && (
-            <button
+            <Button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              size="xs"
             >
               <Save className="h-3 w-3" />
               {saving ? "Saving..." : "Save"}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="outline"
+            size="xs"
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent"
           >
             <Plus className="h-3 w-3" />
             Add Tool
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -530,13 +532,14 @@ function ToolsTab({
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
           <Wrench className="h-8 w-8 text-muted-foreground/40" />
           <p className="mt-3 text-sm text-muted-foreground">No tools configured</p>
-          <button
+          <Button
             onClick={() => setShowAdd(true)}
-            className="mt-3 flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            size="xs"
+            className="mt-3"
           >
             <Plus className="h-3 w-3" />
             Add Tool
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -563,22 +566,26 @@ function ToolsTab({
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={() => toggleConnect(tool.id)}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={
                     tool.connected
-                      ? "bg-green-500/10 text-green-600"
+                      ? "bg-success/10 text-success"
                       : "bg-muted text-muted-foreground hover:bg-accent"
-                  }`}
+                  }
                 >
                   {tool.connected ? "Connected" : "Connect"}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => removeTool(tool.id)}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-red-500"
+                  className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -661,14 +668,14 @@ function TriggersTab({
         </div>
         <div className="flex items-center gap-2">
           {isDirty && (
-            <button
+            <Button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              size="xs"
             >
               <Save className="h-3 w-3" />
               {saving ? "Saving..." : "Save"}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -710,22 +717,24 @@ function TriggersTab({
                     }`}
                   />
                 </button>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => removeTrigger(trigger.id)}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-red-500"
+                  className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
 
             {trigger.type === "scheduled" && (
               <div className="mt-3 grid grid-cols-2 gap-3 pl-12">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <Label className="text-xs text-muted-foreground">
                     Cron Expression
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={(trigger.config as { cron?: string }).cron ?? ""}
                     onChange={(e) =>
@@ -735,14 +744,14 @@ function TriggersTab({
                       })
                     }
                     placeholder="0 9 * * 1-5"
-                    className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="mt-1 text-xs font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <Label className="text-xs text-muted-foreground">
                     Timezone
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={(trigger.config as { timezone?: string }).timezone ?? ""}
                     onChange={(e) =>
@@ -752,7 +761,7 @@ function TriggersTab({
                       })
                     }
                     placeholder="UTC"
-                    className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="mt-1 text-xs"
                   />
                 </div>
               </div>
@@ -762,20 +771,24 @@ function TriggersTab({
       </div>
 
       <div className="flex gap-2">
-        <button
+        <Button
+          variant="outline"
+          size="xs"
           onClick={() => addTrigger("on_assign")}
-          className="flex items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="border-dashed text-muted-foreground hover:text-foreground"
         >
           <Bot className="h-3 w-3" />
           Add On Assign
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
+          size="xs"
           onClick={() => addTrigger("scheduled")}
-          className="flex items-center gap-1.5 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="border-dashed text-muted-foreground hover:text-foreground"
         >
           <Timer className="h-3 w-3" />
           Add Scheduled
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -909,12 +922,13 @@ function AgentDetail({
           )}
         </div>
         <div className="relative">
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => setShowMenu(!showMenu)}
-            className="rounded-md p-1.5 hover:bg-accent"
           >
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-          </button>
+          </Button>
           {showMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
@@ -924,7 +938,7 @@ function AgentDetail({
                     setShowMenu(false);
                     setConfirmDelete(true);
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-red-500 hover:bg-accent"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-accent"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete Agent
@@ -978,15 +992,11 @@ function AgentDetail({
 
       {/* Delete Confirmation */}
       {confirmDelete && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-black/10 backdrop-blur-xs"
-            onClick={() => setConfirmDelete(false)}
-          />
-          <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-background p-6 shadow-lg ring-1 ring-foreground/10">
+        <Dialog open onOpenChange={(v) => { if (!v) setConfirmDelete(false); }}>
+          <DialogContent className="max-w-sm" showCloseButton={false}>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
-                <AlertCircle className="h-5 w-5 text-red-500" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <AlertCircle className="h-5 w-5 text-destructive" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold">Delete agent?</h3>
@@ -995,25 +1005,22 @@ function AgentDetail({
                 </p>
               </div>
             </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
-              >
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
                 onClick={() => {
                   setConfirmDelete(false);
                   onDelete(agent.id);
                 }}
-                className="rounded-md bg-red-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
               >
                 Delete
-              </button>
-            </div>
-          </div>
-        </>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -1024,7 +1031,10 @@ function AgentDetail({
 // ---------------------------------------------------------------------------
 
 export default function AgentsPage() {
-  const { agents, refreshAgents, workspace, isLoading } = useAuth();
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const workspace = useWorkspaceStore((s) => s.workspace);
+  const agents = useWorkspaceStore((s) => s.agents);
+  const refreshAgents = useWorkspaceStore((s) => s.refreshAgents);
   const [selectedId, setSelectedId] = useState<string>("");
   const [showCreate, setShowCreate] = useState(false);
   const [runtimes, setRuntimes] = useState<RuntimeDevice[]>([]);
@@ -1090,24 +1100,26 @@ export default function AgentsPage() {
       <div className="w-72 shrink-0 overflow-y-auto border-r">
         <div className="flex h-12 items-center justify-between border-b px-4">
           <h1 className="text-sm font-semibold">Agents</h1>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={() => setShowCreate(true)}
-            className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
           >
             <Plus className="h-4 w-4 text-muted-foreground" />
-          </button>
+          </Button>
         </div>
         {agents.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-4 py-12">
             <Bot className="h-8 w-8 text-muted-foreground/40" />
             <p className="mt-3 text-sm text-muted-foreground">No agents yet</p>
-            <button
+            <Button
               onClick={() => setShowCreate(true)}
-              className="mt-3 flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              size="xs"
+              className="mt-3"
             >
               <Plus className="h-3 w-3" />
               Create Agent
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="divide-y">
@@ -1136,13 +1148,14 @@ export default function AgentsPage() {
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
             <Bot className="h-10 w-10 text-muted-foreground/30" />
             <p className="mt-3 text-sm">Select an agent to view details</p>
-            <button
+            <Button
               onClick={() => setShowCreate(true)}
-              className="mt-3 flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              size="xs"
+              className="mt-3"
             >
               <Plus className="h-3 w-3" />
               Create Agent
-            </button>
+            </Button>
           </div>
         )}
       </div>

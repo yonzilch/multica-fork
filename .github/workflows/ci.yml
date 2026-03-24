@@ -43,6 +43,22 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: multica
+          POSTGRES_USER: multica
+          POSTGRES_PASSWORD: multica
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U multica -d multica"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://multica:multica@localhost:5432/multica?sslmode=disable
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -55,6 +71,9 @@ jobs:
 
       - name: Build
         run: cd server && go build ./...
+
+      - name: Run migrations
+        run: cd server && go run ./cmd/migrate up
 
       - name: Test
         run: cd server && go test ./...

@@ -1,11 +1,27 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useAuth } from "../../../lib/auth-context";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuthStore } from "@/features/auth";
+import { useWorkspaceStore } from "@/features/workspace";
+import { api } from "@/shared/api";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@multica/ui/components/ui/card";
+import { Input } from "@multica/ui/components/ui/input";
+import { Button } from "@multica/ui/components/ui/button";
+import { Label } from "@multica/ui/components/ui/label";
 
 function LoginPageContent() {
-  const { login, isLoading } = useAuth();
+  const router = useRouter();
+  const login = useAuthStore((s) => s.login);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const hydrateWorkspace = useWorkspaceStore((s) => s.hydrateWorkspace);
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -21,7 +37,10 @@ function LoginPageContent() {
     setError("");
     setSubmitting(true);
     try {
-      await login(email, name || undefined, searchParams.get("next") || undefined);
+      await login(email, name || undefined);
+      const wsList = await api.listWorkspaces();
+      await hydrateWorkspace(wsList);
+      router.push(searchParams.get("next") || "/issues");
     } catch (err) {
       setError("Login failed. Make sure the server is running.");
       setSubmitting(false);
@@ -30,38 +49,51 @@ function LoginPageContent() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 text-center">
-        <h1 className="text-2xl font-bold">Multica</h1>
-        <p className="text-muted-foreground">AI-native task management</p>
-
-        <div className="space-y-3 text-left">
-          <input
-            type="text"
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-            required
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-500">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={submitting || isLoading}
-          className="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
-        >
-          {submitting ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Multica</CardTitle>
+          <CardDescription>AI-native task management</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form id="login-form" onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
+          </form>
+        </CardContent>
+        <CardFooter>
+          <Button
+            type="submit"
+            form="login-form"
+            disabled={submitting || isLoading}
+            className="w-full"
+            size="lg"
+          >
+            {submitting ? "Signing in..." : "Sign in"}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

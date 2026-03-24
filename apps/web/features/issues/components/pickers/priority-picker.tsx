@@ -1,20 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import type { IssueStatus, UpdateIssueRequest } from "@multica/types";
-import { ALL_STATUSES, STATUS_CONFIG } from "../../_config";
-import { StatusIcon } from "../icons";
+import type { IssuePriority, UpdateIssueRequest } from "@multica/types";
+import { PRIORITY_ORDER, PRIORITY_CONFIG } from "@/features/issues/config";
+import { PriorityIcon } from "../priority-icon";
 import { PropertyPicker, PickerItem } from "./property-picker";
 
-export function StatusPicker({
-  status,
+export function PriorityPicker({
+  priority,
   onUpdate,
 }: {
-  status: IssueStatus;
+  priority: IssuePriority;
   onUpdate: (updates: Partial<UpdateIssueRequest>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const cfg = STATUS_CONFIG[status];
+  const cfg = PRIORITY_CONFIG[priority];
 
   return (
     <PropertyPicker
@@ -23,24 +23,23 @@ export function StatusPicker({
       width="w-44"
       trigger={
         <>
-          <StatusIcon status={status} className="h-3.5 w-3.5" />
+          <PriorityIcon priority={priority} />
           <span>{cfg.label}</span>
         </>
       }
     >
-      {ALL_STATUSES.map((s) => {
-        const c = STATUS_CONFIG[s];
+      {PRIORITY_ORDER.map((p) => {
+        const c = PRIORITY_CONFIG[p];
         return (
           <PickerItem
-            key={s}
-            selected={s === status}
-            hoverClassName={c.hoverBg}
+            key={p}
+            selected={p === priority}
             onClick={() => {
-              onUpdate({ status: s });
+              onUpdate({ priority: p });
               setOpen(false);
             }}
           >
-            <StatusIcon status={s} className="h-3.5 w-3.5" />
+            <PriorityIcon priority={p} />
             <span>{c.label}</span>
           </PickerItem>
         );

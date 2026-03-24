@@ -3,8 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: [
     "@multica/ui",
-    "@multica/store",
-    "@multica/hooks",
     "@multica/sdk",
     "@multica/types",
     "@multica/utils",

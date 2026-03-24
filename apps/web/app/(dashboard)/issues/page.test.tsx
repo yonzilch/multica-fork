@@ -26,16 +26,11 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// Mock auth context
-vi.mock("../../../lib/auth-context", () => ({
-  useAuth: () => ({
-    user: { id: "user-1", name: "Test User", email: "test@multica.ai" },
-    workspace: { id: "ws-1", name: "Test WS" },
-    members: [
-      { user_id: "user-1", name: "Test User", email: "test@multica.ai" },
-    ],
-    agents: [{ id: "agent-1", name: "Claude Agent" }],
-    isLoading: false,
+// Mock workspace feature
+vi.mock("@/features/workspace", () => ({
+  useActorName: () => ({
+    getMemberName: (id: string) => (id === "user-1" ? "Test User" : "Unknown"),
+    getAgentName: (id: string) => (id === "agent-1" ? "Claude Agent" : "Unknown Agent"),
     getActorName: (type: string, id: string) =>
       type === "member" ? "Test User" : "Claude Agent",
     getActorInitials: () => "TU",
@@ -43,24 +38,10 @@ vi.mock("../../../lib/auth-context", () => ({
 }));
 
 // Mock WebSocket context
-vi.mock("../../../lib/ws-context", () => ({
+vi.mock("@/features/realtime", () => ({
   useWSEvent: vi.fn(),
   useWS: () => ({ subscribe: vi.fn(() => () => {}) }),
   WSProvider: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-// Mock tab-store
-vi.mock("../../../lib/tab-store", () => ({
-  useTabStore: () => ({
-    updateTabTitle: vi.fn(),
-    activeTabId: "tab-1",
-    openTab: vi.fn(),
-  }),
-}));
-
-// Mock tab-link to avoid TabProvider dependency
-vi.mock("../_components/tab-link", () => ({
-  TabLink: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }));
 
 // Mock api
@@ -68,7 +49,7 @@ const mockListIssues = vi.fn();
 const mockCreateIssue = vi.fn();
 const mockUpdateIssue = vi.fn();
 
-vi.mock("../../../lib/api", () => ({
+vi.mock("@/shared/api", () => ({
   api: {
     listIssues: (...args: any[]) => mockListIssues(...args),
     createIssue: (...args: any[]) => mockCreateIssue(...args),

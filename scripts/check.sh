@@ -6,13 +6,17 @@ set -euo pipefail
 # Usage: bash scripts/check.sh
 # ==========================================================================
 
-ENV_FILE="${ENV_FILE:-$(if [ -f .env ]; then echo .env; elif [ -f .env.worktree ]; then echo .env.worktree; else echo .env; fi)}"
-if [ -f "$ENV_FILE" ]; then
-  set -a
-  # shellcheck disable=SC1090
-  . "$ENV_FILE"
-  set +a
+ENV_FILE="${ENV_FILE:-.env}"
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Missing env file: $ENV_FILE"
+  echo "Create .env from .env.example, or run 'make worktree-env' and use .env.worktree."
+  exit 1
 fi
+
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
 
 POSTGRES_DB="${POSTGRES_DB:-multica}"
 POSTGRES_USER="${POSTGRES_USER:-multica}"
@@ -21,8 +25,6 @@ PORT="${PORT:-8080}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL:-http://localhost:${FRONTEND_PORT}}"
 export PLAYWRIGHT_BASE_URL
-
-COMPOSE_CMD=(docker compose --env-file "$ENV_FILE")
 
 BACKEND_PID=""
 FRONTEND_PID=""
@@ -77,16 +79,7 @@ wait_for_port() {
 # --------------------------------------------------------------------------
 echo "==> Using env file: $ENV_FILE"
 echo "==> Checking PostgreSQL..."
-if pg_isready -h localhost -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /dev/null 2>&1; then
-  echo "    Already running."
-else
-  echo "    Starting via docker compose..."
-  "${COMPOSE_CMD[@]}" up -d
-  until "${COMPOSE_CMD[@]}" exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /dev/null 2>&1; do
-    sleep 1
-  done
-  echo "    PostgreSQL ready."
-fi
+bash scripts/ensure-postgres.sh "$ENV_FILE"
 
 # --------------------------------------------------------------------------
 # Step 1: TypeScript typecheck

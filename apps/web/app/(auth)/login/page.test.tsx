@@ -9,27 +9,30 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-// Mock auth-context
+// Mock auth store
 const mockLogin = vi.fn();
-const mockAuthValue = {
-  user: null,
-  workspace: null,
-  members: [],
-  agents: [],
-  isLoading: false,
-  login: mockLogin,
-  logout: vi.fn(),
-  refreshMembers: vi.fn(),
-  refreshAgents: vi.fn(),
-  getMemberName: () => "Unknown",
-  getAgentName: () => "Unknown Agent",
-  getActorName: () => "System",
-  getActorInitials: () => "XX",
-};
+vi.mock("@/features/auth", () => ({
+  useAuthStore: (selector: (s: any) => any) =>
+    selector({
+      login: mockLogin,
+      isLoading: false,
+    }),
+}));
 
-vi.mock("../../../lib/auth-context", () => ({
-  useAuth: () => mockAuthValue,
-  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+// Mock workspace store
+const mockHydrateWorkspace = vi.fn();
+vi.mock("@/features/workspace", () => ({
+  useWorkspaceStore: (selector: (s: any) => any) =>
+    selector({
+      hydrateWorkspace: mockHydrateWorkspace,
+    }),
+}));
+
+// Mock api
+vi.mock("@/shared/api", () => ({
+  api: {
+    listWorkspaces: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 import LoginPage from "./page";
@@ -44,55 +47,54 @@ describe("LoginPage", () => {
 
     expect(screen.getByText("Multica")).toBeInTheDocument();
     expect(screen.getByText("AI-native task management")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Email")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Name")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
   });
 
   it("does not call login when email is empty", async () => {
     const user = userEvent.setup();
     render(<LoginPage />);
 
-    // The email input has required attribute, so browser validation blocks submit
-    // Verify login was never called
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     expect(mockLogin).not.toHaveBeenCalled();
   });
 
   it("calls login with correct args on submit", async () => {
-    mockLogin.mockResolvedValueOnce(undefined);
+    mockLogin.mockResolvedValueOnce({ id: "u1", name: "Test User" });
+    mockHydrateWorkspace.mockResolvedValueOnce(null);
     const user = userEvent.setup();
     render(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Email"), "test@multica.ai");
-    await user.type(screen.getByPlaceholderText("Name"), "Test User");
+    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Name"), "Test User");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith("test@multica.ai", "Test User", undefined);
+      expect(mockLogin).toHaveBeenCalledWith("test@multica.ai", "Test User");
     });
   });
 
   it("calls login with email only when name is empty", async () => {
-    mockLogin.mockResolvedValueOnce(undefined);
+    mockLogin.mockResolvedValueOnce({ id: "u1", name: "" });
+    mockHydrateWorkspace.mockResolvedValueOnce(null);
     const user = userEvent.setup();
     render(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith("test@multica.ai", undefined, undefined);
+      expect(mockLogin).toHaveBeenCalledWith("test@multica.ai", undefined);
     });
   });
 
   it("shows 'Signing in...' while submitting", async () => {
-    // Make login hang
     mockLogin.mockReturnValueOnce(new Promise(() => {}));
     const user = userEvent.setup();
     render(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
@@ -105,7 +107,7 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />);
 
-    await user.type(screen.getByPlaceholderText("Email"), "test@multica.ai");
+    await user.type(screen.getByLabelText("Email"), "test@multica.ai");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {

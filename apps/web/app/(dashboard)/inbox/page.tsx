@@ -11,8 +11,9 @@ import {
   ArrowRightLeft,
 } from "lucide-react";
 import type { InboxItem, InboxItemType, InboxSeverity, InboxNewPayload } from "@multica/types";
-import { api } from "../../../lib/api";
-import { useWSEvent } from "../../../lib/ws-context";
+import { Button } from "@multica/ui/components/ui/button";
+import { api } from "@/shared/api";
+import { useWSEvent } from "@/features/realtime";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,8 +35,8 @@ const typeIcons: Record<InboxItemType, typeof AlertCircle> = {
 };
 
 const severityColors: Record<InboxSeverity, string> = {
-  action_required: "text-red-500",
-  attention: "text-yellow-500",
+  action_required: "text-destructive",
+  attention: "text-warning",
   info: "text-muted-foreground",
 };
 
@@ -124,12 +125,14 @@ function InboxDetail({
           </div>
         </div>
         {!item.read && (
-          <button
+          <Button
+            variant="outline"
+            size="xs"
             onClick={() => onMarkRead(item.id)}
-            className="shrink-0 rounded-md border px-2 py-1 text-xs hover:bg-accent"
+            className="shrink-0"
           >
             Mark read
-          </button>
+          </Button>
         )}
       </div>
 

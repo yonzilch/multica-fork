@@ -3,8 +3,20 @@
 import { useEffect, useState } from "react";
 import { Settings, Users, Building2, Save, Crown, Shield, User, Plus, Trash2, LogOut } from "lucide-react";
 import type { MemberWithUser, MemberRole } from "@multica/types";
-import { useAuth } from "../../../lib/auth-context";
-import { api } from "../../../lib/api";
+import { Input } from "@multica/ui/components/ui/input";
+import { Textarea } from "@multica/ui/components/ui/textarea";
+import { Label } from "@multica/ui/components/ui/label";
+import { Button } from "@multica/ui/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@multica/ui/components/ui/select";
+import { useAuthStore } from "@/features/auth";
+import { useWorkspaceStore } from "@/features/workspace";
+import { api } from "@/shared/api";
 
 const roleConfig: Record<MemberRole, { label: string; icon: typeof Crown }> = {
   owner: { label: "Owner", icon: Crown },
@@ -49,16 +61,14 @@ function MemberRow({
         <div className="text-xs text-muted-foreground">{member.email}</div>
       </div>
       {canEditRole ? (
-        <select
-          value={member.role}
-          onChange={(e) => onRoleChange(e.target.value as MemberRole)}
-          disabled={busy}
-          className="rounded-md border bg-background px-2 py-1 text-xs"
-        >
-          <option value="member">Member</option>
-          <option value="admin">Admin</option>
-          {canManageOwners && <option value="owner">Owner</option>}
-        </select>
+        <Select value={member.role} onValueChange={(value) => onRoleChange(value as MemberRole)} disabled={busy}>
+          <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="member">Member</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            {canManageOwners && <SelectItem value="owner">Owner</SelectItem>}
+          </SelectContent>
+        </Select>
       ) : (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <RoleIcon className="h-3 w-3" />
@@ -66,30 +76,29 @@ function MemberRow({
         </div>
       )}
       {canRemove && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={onRemove}
           disabled={busy}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
           aria-label={`Remove ${member.name}`}
         >
           <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       )}
     </div>
   );
 }
 
 export default function SettingsPage() {
-  const {
-    user,
-    workspace,
-    members,
-    updateWorkspace,
-    updateCurrentUser,
-    refreshMembers,
-    leaveWorkspace,
-    deleteWorkspace,
-  } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const workspace = useWorkspaceStore((s) => s.workspace);
+  const members = useWorkspaceStore((s) => s.members);
+  const updateWorkspace = useWorkspaceStore((s) => s.updateWorkspace);
+  const refreshMembers = useWorkspaceStore((s) => s.refreshMembers);
+  const leaveWorkspace = useWorkspaceStore((s) => s.leaveWorkspace);
+  const deleteWorkspace = useWorkspaceStore((s) => s.deleteWorkspace);
 
   const [name, setName] = useState(workspace?.name ?? "");
   const [description, setDescription] = useState(
@@ -152,7 +161,7 @@ export default function SettingsPage() {
         name: profileName,
         avatar_url: avatarUrl || undefined,
       });
-      updateCurrentUser(updated);
+      setUser(updated);
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2000);
     } catch (e) {
@@ -259,43 +268,43 @@ export default function SettingsPage() {
 
         <div className="space-y-3 rounded-lg border p-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs text-muted-foreground">
               Name
-            </label>
-            <input
+            </Label>
+            <Input
               type="search"
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs text-muted-foreground">
               Avatar URL
-            </label>
-            <input
+            </Label>
+            <Input
               type="url"
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
               placeholder="https://example.com/avatar.png"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1"
             />
           </div>
           {profileError && (
-            <p className="text-xs text-red-500">{profileError}</p>
+            <p className="text-xs text-destructive">{profileError}</p>
           )}
           <div className="flex items-center justify-end gap-2 pt-1">
             {profileSaved && (
-              <span className="text-xs text-green-600">Saved!</span>
+              <span className="text-xs text-success">Saved!</span>
             )}
-            <button
+            <Button
+              size="sm"
               onClick={handleProfileSave}
               disabled={profileSaving || !profileName.trim()}
-              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               <Save className="h-3 w-3" />
               {profileSaving ? "Updating..." : "Update Profile"}
-            </button>
+            </Button>
           </div>
         </div>
       </section>
@@ -309,34 +318,34 @@ export default function SettingsPage() {
 
         <div className="space-y-3 rounded-lg border p-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs text-muted-foreground">
               Name
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!canManageWorkspace}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs text-muted-foreground">
               Description
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               disabled={!canManageWorkspace}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              className="mt-1 resize-none"
               placeholder="What does this workspace focus on?"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs text-muted-foreground">
               Context
-            </label>
+            </Label>
             <textarea
               value={context}
               onChange={(e) => setContext(e.target.value)}
@@ -347,28 +356,28 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-xs text-muted-foreground">
               Slug
-            </label>
+            </Label>
             <div className="mt-1 rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
               {workspace.slug}
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
             {workspaceError && (
-              <span className="text-xs text-red-500">{workspaceError}</span>
+              <span className="text-xs text-destructive">{workspaceError}</span>
             )}
             {saved && (
-              <span className="text-xs text-green-600">Saved!</span>
+              <span className="text-xs text-success">Saved!</span>
             )}
-            <button
+            <Button
+              size="sm"
               onClick={handleSave}
               disabled={saving || !name.trim() || !canManageWorkspace}
-              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               <Save className="h-3 w-3" />
               {saving ? "Saving..." : "Save"}
-            </button>
+            </Button>
           </div>
           {!canManageWorkspace && (
             <p className="text-xs text-muted-foreground">
@@ -390,7 +399,7 @@ export default function SettingsPage() {
         </div>
 
         {memberError && (
-          <p className="text-sm text-red-500">{memberError}</p>
+          <p className="text-sm text-destructive">{memberError}</p>
         )}
 
         {canManageWorkspace && (
@@ -400,29 +409,26 @@ export default function SettingsPage() {
               <h3 className="text-sm font-medium">Add member</h3>
             </div>
             <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto]">
-              <input
+              <Input
                 type="email"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="user@company.com"
-                className="rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as MemberRole)}
-                className="rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-                {isOwner && <option value="owner">Owner</option>}
-              </select>
-              <button
+              <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as MemberRole)}>
+                <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  {isOwner && <SelectItem value="owner">Owner</SelectItem>}
+                </SelectContent>
+              </Select>
+              <Button
                 onClick={handleAddMember}
                 disabled={inviteLoading || !inviteEmail.trim()}
-                className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {inviteLoading ? "Adding..." : "Add"}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -460,30 +466,32 @@ export default function SettingsPage() {
                 Remove yourself from this workspace.
               </p>
             </div>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleLeaveWorkspace}
               disabled={memberActionId === "leave"}
-              className="rounded-md border px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
             >
               {memberActionId === "leave" ? "Leaving..." : "Leave workspace"}
-            </button>
+            </Button>
           </div>
 
           {isOwner && (
             <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-medium text-red-600">Delete workspace</p>
+                <p className="text-sm font-medium text-destructive">Delete workspace</p>
                 <p className="text-xs text-muted-foreground">
                   Permanently delete this workspace and its data.
                 </p>
               </div>
-              <button
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={handleDeleteWorkspace}
                 disabled={memberActionId === "delete-workspace"}
-                className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {memberActionId === "delete-workspace" ? "Deleting..." : "Delete workspace"}
-              </button>
+              </Button>
             </div>
           )}
         </div>

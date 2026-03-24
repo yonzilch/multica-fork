@@ -24,9 +24,9 @@ export const STATUS_CONFIG: Record<
 > = {
   backlog: { label: "Backlog", iconColor: "text-muted-foreground", hoverBg: "hover:bg-accent" },
   todo: { label: "Todo", iconColor: "text-muted-foreground", hoverBg: "hover:bg-accent" },
-  in_progress: { label: "In Progress", iconColor: "text-yellow-500", hoverBg: "hover:bg-yellow-500/10" },
-  in_review: { label: "In Review", iconColor: "text-green-500", hoverBg: "hover:bg-green-500/10" },
-  done: { label: "Done", iconColor: "text-blue-500", hoverBg: "hover:bg-blue-500/10" },
-  blocked: { label: "Blocked", iconColor: "text-red-500", hoverBg: "hover:bg-red-500/10" },
+  in_progress: { label: "In Progress", iconColor: "text-warning", hoverBg: "hover:bg-warning/10" },
+  in_review: { label: "In Review", iconColor: "text-success", hoverBg: "hover:bg-success/10" },
+  done: { label: "Done", iconColor: "text-info", hoverBg: "hover:bg-info/10" },
+  blocked: { label: "Blocked", iconColor: "text-destructive", hoverBg: "hover:bg-destructive/10" },
   cancelled: { label: "Cancelled", iconColor: "text-muted-foreground", hoverBg: "hover:bg-accent" },
 };

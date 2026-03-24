@@ -1,10 +1,21 @@
 import { test, expect } from "@playwright/test";
-import { loginAsDefault } from "./helpers";
+import { createTestApi, loginAsDefault } from "./helpers";
+import type { TestApiClient } from "./fixtures";
 
 test.describe("Comments", () => {
-  test("can add a comment on an issue", async ({ page }) => {
-    await loginAsDefault(page);
+  let api: TestApiClient;
 
+  test.beforeEach(async ({ page }) => {
+    api = await createTestApi();
+    await api.createIssue("E2E Comment Test " + Date.now());
+    await loginAsDefault(page);
+  });
+
+  test.afterEach(async () => {
+    await api.cleanup();
+  });
+
+  test("can add a comment on an issue", async ({ page }) => {
     // Wait for issues to load and click first one
     const issueLink = page.locator('a[href^="/issues/"]').first();
     await expect(issueLink).toBeVisible({ timeout: 5000 });
@@ -31,8 +42,6 @@ test.describe("Comments", () => {
   });
 
   test("comment submit button is disabled when empty", async ({ page }) => {
-    await loginAsDefault(page);
-
     const issueLink = page.locator('a[href^="/issues/"]').first();
     await expect(issueLink).toBeVisible({ timeout: 5000 });
     await issueLink.click();

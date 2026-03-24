@@ -72,15 +72,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.3)
-      '@multica/hooks':
-        specifier: workspace:*
-        version: link:../../packages/hooks
       '@multica/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@multica/store':
-        specifier: workspace:*
-        version: link:../../packages/store
       '@multica/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -105,6 +99,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.3(react@19.2.3)
+      zustand:
+        specifier: 'catalog:'
+        version: 5.0.12(@types/react@19.2.14)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 'catalog:'

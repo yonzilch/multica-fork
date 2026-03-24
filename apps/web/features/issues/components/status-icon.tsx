@@ -1,5 +1,5 @@
 import type { IssueStatus } from "@multica/types";
-import { STATUS_CONFIG } from "../../_config";
+import { STATUS_CONFIG } from "@/features/issues/config";
 
 // ---------------------------------------------------------------------------
 // Circle geometry constants (viewBox 0 0 16 16, center 8,8, radius 6)

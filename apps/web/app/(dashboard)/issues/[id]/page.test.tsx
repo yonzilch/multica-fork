@@ -27,16 +27,27 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// Mock auth context
-vi.mock("../../../../lib/auth-context", () => ({
-  useAuth: () => ({
-    user: { id: "user-1", name: "Test User", email: "test@multica.ai" },
-    workspace: { id: "ws-1", name: "Test WS" },
-    members: [
-      { user_id: "user-1", name: "Test User", email: "test@multica.ai" },
-    ],
-    agents: [{ id: "agent-1", name: "Claude Agent" }],
-    isLoading: false,
+// Mock auth store
+vi.mock("@/features/auth", () => ({
+  useAuthStore: (selector: (s: any) => any) =>
+    selector({
+      user: { id: "user-1", name: "Test User", email: "test@multica.ai" },
+      isLoading: false,
+    }),
+}));
+
+// Mock workspace feature
+vi.mock("@/features/workspace", () => ({
+  useWorkspaceStore: (selector: (s: any) => any) =>
+    selector({
+      workspace: { id: "ws-1", name: "Test WS" },
+      workspaces: [{ id: "ws-1", name: "Test WS" }],
+      members: [{ user_id: "user-1", name: "Test User", email: "test@multica.ai" }],
+      agents: [{ id: "agent-1", name: "Claude Agent" }],
+    }),
+  useActorName: () => ({
+    getMemberName: (id: string) => (id === "user-1" ? "Test User" : "Unknown"),
+    getAgentName: (id: string) => (id === "agent-1" ? "Claude Agent" : "Unknown Agent"),
     getActorName: (type: string, id: string) => {
       if (type === "member" && id === "user-1") return "Test User";
       if (type === "agent" && id === "agent-1") return "Claude Agent";
@@ -51,21 +62,13 @@ vi.mock("../../../../lib/auth-context", () => ({
 }));
 
 // Mock ws-context
-vi.mock("../../../../lib/ws-context", () => ({
+vi.mock("@/features/realtime", () => ({
   useWSEvent: () => {},
 }));
 
 // Mock @multica/ui calendar (react-day-picker needs browser APIs)
 vi.mock("@multica/ui/components/ui/calendar", () => ({
   Calendar: () => null,
-}));
-
-// Mock tab-store
-vi.mock("../../../../lib/tab-store", () => ({
-  useTabStore: () => ({
-    updateTabTitle: vi.fn(),
-    activeTabId: "tab-1",
-  }),
 }));
 
 // Mock api
@@ -77,7 +80,7 @@ const mockDeleteComment = vi.hoisted(() => vi.fn());
 const mockDeleteIssue = vi.hoisted(() => vi.fn());
 const mockUpdateIssue = vi.hoisted(() => vi.fn());
 
-vi.mock("../../../../lib/api", () => ({
+vi.mock("@/shared/api", () => ({
   api: {
     getIssue: (...args: any[]) => mockGetIssue(...args),
     listComments: (...args: any[]) => mockListComments(...args),

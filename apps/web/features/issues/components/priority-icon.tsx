@@ -1,5 +1,5 @@
 import type { IssuePriority } from "@multica/types";
-import { PRIORITY_CONFIG } from "../../_config";
+import { PRIORITY_CONFIG } from "@/features/issues/config";
 
 export function PriorityIcon({
   priority,

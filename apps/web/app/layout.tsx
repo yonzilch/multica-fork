@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@multica/ui/components/theme-provider";
 import { Toaster } from "@multica/ui/components/ui/sonner";
-import { AuthProvider } from "../lib/auth-context";
-import { WSProvider } from "../lib/ws-context";
+import { AuthInitializer } from "@/features/auth";
+import { WSProvider } from "@/features/realtime";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Multica",
   description: "AI-native task management",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: ["/favicon.svg"],
+  },
 };
 
 export default function RootLayout({
@@ -24,9 +28,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
+          <AuthInitializer>
             <WSProvider>{children}</WSProvider>
-          </AuthProvider>
+          </AuthInitializer>
           <Toaster />
         </ThemeProvider>
       </body>

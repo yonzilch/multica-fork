@@ -33,6 +33,10 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.WorkspaceID = strings.TrimSpace(req.WorkspaceID)
+	req.DaemonID = strings.TrimSpace(req.DaemonID)
+	req.DeviceName = strings.TrimSpace(req.DeviceName)
+
 	if req.DaemonID == "" {
 		writeError(w, http.StatusBadRequest, "daemon_id is required")
 		return
@@ -43,6 +47,10 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(req.Runtimes) == 0 {
 		writeError(w, http.StatusBadRequest, "at least one runtime is required")
+		return
+	}
+	if _, err := h.Queries.GetWorkspace(r.Context(), parseUUID(req.WorkspaceID)); err != nil {
+		writeError(w, http.StatusNotFound, "workspace not found")
 		return
 	}
 

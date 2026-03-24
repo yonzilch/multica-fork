@@ -2,13 +2,10 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { TabLink } from "../_components/tab-link";
-import { useTabStore } from "../../../lib/tab-store";
 import {
   Columns3,
   List,
   Plus,
-  Bot,
 } from "lucide-react";
 import {
   DndContext,
@@ -24,7 +21,7 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Issue, IssueStatus, IssuePriority } from "@multica/types";
-import { STATUS_CONFIG, PRIORITY_CONFIG, ALL_STATUSES, PRIORITY_ORDER } from "./_config";
+import { STATUS_CONFIG, PRIORITY_CONFIG, ALL_STATUSES, PRIORITY_ORDER } from "@/features/issues/config";
 import {
   Dialog,
   DialogContent,
@@ -33,41 +30,22 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@multica/ui/components/ui/dialog";
-import { StatusIcon, PriorityIcon } from "./_components";
-import { api } from "../../../lib/api";
-import { useAuth } from "../../../lib/auth-context";
-import { useWSEvent } from "../../../lib/ws-context";
+import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
+import { Textarea } from "@multica/ui/components/ui/textarea";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@multica/ui/components/ui/select";
+import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
+import { StatusIcon, PriorityIcon } from "@/features/issues/components";
+import { api } from "@/shared/api";
+import { useActorName } from "@/features/workspace";
+import { useWSEvent } from "@/features/realtime";
 import type { IssueCreatedPayload, IssueUpdatedPayload, IssueDeletedPayload } from "@multica/types";
-
-function AssigneeAvatar({
-  issue,
-  size = "sm",
-}: {
-  issue: Issue;
-  size?: "sm" | "md";
-}) {
-  const { getActorName, getActorInitials } = useAuth();
-  if (!issue.assignee_type || !issue.assignee_id) return null;
-  const name = getActorName(issue.assignee_type, issue.assignee_id);
-  const initials = getActorInitials(issue.assignee_type, issue.assignee_id);
-  const sizeClass = size === "sm" ? "h-5 w-5 text-[10px]" : "h-6 w-6 text-xs";
-  return (
-    <div
-      className={`flex shrink-0 items-center justify-center rounded-full font-medium ${sizeClass} ${
-        issue.assignee_type === "agent"
-          ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
-          : "bg-muted text-muted-foreground"
-      }`}
-      title={name}
-    >
-      {issue.assignee_type === "agent" ? (
-        <Bot className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} />
-      ) : (
-        initials
-      )}
-    </div>
-  );
-}
 
 function formatDate(date: string): string {
   return new Date(date).toLocaleDateString("en-US", {
@@ -81,6 +59,7 @@ function formatDate(date: string): string {
 // ---------------------------------------------------------------------------
 
 function BoardCardContent({ issue }: { issue: Issue }) {
+  const { getActorName, getActorInitials } = useActorName();
   return (
     <div className="rounded-lg border bg-background p-3">
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -90,7 +69,15 @@ function BoardCardContent({ issue }: { issue: Issue }) {
       <p className="mt-1.5 text-[13px] leading-snug">{issue.title}</p>
       <div className="mt-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <AssigneeAvatar issue={issue} />
+          {issue.assignee_type && issue.assignee_id && (
+            <ActorAvatar
+              actorType={issue.assignee_type}
+              actorId={issue.assignee_id}
+              size={20}
+              getName={getActorName}
+              getInitials={getActorInitials}
+            />
+          )}
         </div>
         {issue.due_date && (
           <span className="text-xs text-muted-foreground">
@@ -135,14 +122,12 @@ function DraggableBoardCard({ issue }: { issue: Issue }) {
         if (isDragging) e.stopPropagation();
       }}
     >
-      <TabLink
+      <Link
         href={`/issues/${issue.id}`}
-        title={issue.title}
-        iconKey="issues"
         className="block transition-colors hover:opacity-80"
       >
         <BoardCardContent issue={issue} />
-      </TabLink>
+      </Link>
     </div>
   );
 }
@@ -276,11 +261,10 @@ function BoardView({
 // ---------------------------------------------------------------------------
 
 function ListRow({ issue }: { issue: Issue }) {
+  const { getActorName, getActorInitials } = useActorName();
   return (
-    <TabLink
+    <Link
       href={`/issues/${issue.id}`}
-      title={issue.title}
-      iconKey="issues"
       className="flex h-9 items-center gap-2 px-4 text-[13px] transition-colors hover:bg-accent/50"
     >
       <PriorityIcon priority={issue.priority} />
@@ -294,8 +278,16 @@ function ListRow({ issue }: { issue: Issue }) {
           {formatDate(issue.due_date)}
         </span>
       )}
-      <AssigneeAvatar issue={issue} />
-    </TabLink>
+      {issue.assignee_type && issue.assignee_id && (
+        <ActorAvatar
+          actorType={issue.assignee_type}
+          actorId={issue.assignee_id}
+          size={20}
+          getName={getActorName}
+          getInitials={getActorInitials}
+        />
+      )}
+    </Link>
   );
 }
 
@@ -374,10 +366,10 @@ function CreateIssueDialog({ onCreated }: { onCreated: (issue: Issue) => void })
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger
         render={
-          <button className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs text-primary-foreground transition-colors hover:bg-primary/90">
+          <Button size="sm">
             <Plus className="h-3.5 w-3.5" />
             New Issue
-          </button>
+          </Button>
         }
       />
       <DialogContent className="sm:max-w-lg">
@@ -385,7 +377,7 @@ function CreateIssueDialog({ onCreated }: { onCreated: (issue: Issue) => void })
           <DialogTitle>New Issue</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <input
+          <Input
             autoFocus
             type="text"
             value={title}
@@ -397,52 +389,48 @@ function CreateIssueDialog({ onCreated }: { onCreated: (issue: Issue) => void })
               }
             }}
             placeholder="Issue title"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
           />
-          <textarea
+          <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Add description..."
             rows={3}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring resize-none"
+            className="resize-none"
           />
           <div className="flex items-center gap-3 flex-wrap">
             {/* Status selector */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <StatusIcon status={status} className="h-3.5 w-3.5" />
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as IssueStatus)}
-                className="bg-transparent text-xs outline-none cursor-pointer"
-              >
+            <Select value={status} onValueChange={(v) => setStatus(v as IssueStatus)}>
+              <SelectTrigger size="sm" className="text-xs">
+                <StatusIcon status={status} className="h-3.5 w-3.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {ALL_STATUSES.map((s) => (
-                  <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+                  <SelectItem key={s} value={s}>{STATUS_CONFIG[s].label}</SelectItem>
                 ))}
-              </select>
-            </div>
+              </SelectContent>
+            </Select>
             {/* Priority selector */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <PriorityIcon priority={priority} />
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as IssuePriority)}
-                className="bg-transparent text-xs outline-none cursor-pointer"
-              >
+            <Select value={priority} onValueChange={(v) => setPriority(v as IssuePriority)}>
+              <SelectTrigger size="sm" className="text-xs">
+                <PriorityIcon priority={priority} />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {PRIORITY_ORDER.map((p) => (
-                  <option key={p} value={p}>{PRIORITY_CONFIG[p].label}</option>
+                  <SelectItem key={p} value={p}>{PRIORITY_CONFIG[p].label}</SelectItem>
                 ))}
-              </select>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
-          <button
+          <Button
             onClick={handleSubmit}
             disabled={!title.trim() || submitting}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create Issue"}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -456,7 +444,6 @@ function CreateIssueDialog({ onCreated }: { onCreated: (issue: Issue) => void })
 type ViewMode = "board" | "list";
 
 export default function IssuesPage() {
-  const { closeTabByPath } = useTabStore();
   const [view, setView] = useState<ViewMode>("board");
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -503,8 +490,7 @@ export default function IssuesPage() {
     useCallback((payload: unknown) => {
       const { issue_id } = payload as IssueDeletedPayload;
       setIssues((prev) => prev.filter((i) => i.id !== issue_id));
-      closeTabByPath(`/issues/${issue_id}`);
-    }, [closeTabByPath]),
+    }, []),
   );
 
   const handleMoveIssue = useCallback(
@@ -548,50 +534,56 @@ export default function IssuesPage() {
         <div className="flex items-center gap-2">
           <h1 className="text-sm font-semibold">All Issues</h1>
           <div className="ml-2 flex items-center rounded-md border p-0.5">
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => setView("board")}
-              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${
+              className={
                 view === "board"
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+              }
             >
               <Columns3 className="h-3 w-3" />
               Board
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => setView("list")}
-              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${
+              className={
                 view === "list"
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+              }
             >
               <List className="h-3 w-3" />
               List
-            </button>
+            </Button>
           </div>
           <div className="flex items-center gap-2">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as IssueStatus | "")}
-              className="rounded-md border bg-background px-2 py-1 text-xs outline-none"
-            >
-              <option value="">All Status</option>
-              {ALL_STATUSES.map((s) => (
-                <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
-              ))}
-            </select>
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value as IssuePriority | "")}
-              className="rounded-md border bg-background px-2 py-1 text-xs outline-none"
-            >
-              <option value="">All Priority</option>
-              {PRIORITY_ORDER.map((p) => (
-                <option key={p} value={p}>{PRIORITY_CONFIG[p].label}</option>
-              ))}
-            </select>
+            <Select value={filterStatus || undefined} onValueChange={(v) => setFilterStatus((v ?? "") as IssueStatus | "")}>
+              <SelectTrigger size="sm" className="text-xs">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Status</SelectItem>
+                {ALL_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{STATUS_CONFIG[s].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterPriority || undefined} onValueChange={(v) => setFilterPriority((v ?? "") as IssuePriority | "")}>
+              <SelectTrigger size="sm" className="text-xs">
+                <SelectValue placeholder="All Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Priority</SelectItem>
+                {PRIORITY_ORDER.map((p) => (
+                  <SelectItem key={p} value={p}>{PRIORITY_CONFIG[p].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <CreateIssueDialog onCreated={handleIssueCreated} />

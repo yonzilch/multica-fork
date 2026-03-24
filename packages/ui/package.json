@@ -9,6 +9,7 @@
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./components/ui/*": "./src/components/ui/*.tsx",
+    "./components/common/*": "./src/components/common/*.tsx",
     "./components/markdown": "./src/components/markdown/index.ts",
     "./hooks/*": "./src/hooks/*.ts"
   },

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Bot, UserMinus } from "lucide-react";
 import type { IssueAssigneeType, UpdateIssueRequest } from "@multica/types";
-import { useAuth } from "../../../../../lib/auth-context";
+import { useWorkspaceStore, useActorName } from "@/features/workspace";
 import {
   PropertyPicker,
   PickerItem,
@@ -22,7 +22,9 @@ export function AssigneePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
-  const { members, agents, getActorName, getActorInitials } = useAuth();
+  const members = useWorkspaceStore((s) => s.members);
+  const agents = useWorkspaceStore((s) => s.agents);
+  const { getActorName, getActorInitials } = useActorName();
 
   const query = filter.toLowerCase();
   const filteredMembers = members.filter((m) =>

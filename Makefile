@@ -1,4 +1,4 @@
-.PHONY: dev daemon cli build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree
+.PHONY: dev daemon cli build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree db-up db-down
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -20,47 +20,40 @@ NEXT_PUBLIC_API_URL ?= http://localhost:$(PORT)
 NEXT_PUBLIC_WS_URL ?= ws://localhost:$(PORT)/ws
 GOOGLE_REDIRECT_URI ?= $(FRONTEND_ORIGIN)/auth/callback
 MULTICA_SERVER_URL ?= ws://localhost:$(PORT)/ws
-COMPOSE_PROJECT_NAME ?= super_multica
 
 export
 
-COMPOSE := docker compose --env-file $(ENV_FILE)
+COMPOSE := docker compose
+
+define REQUIRE_ENV
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "Missing env file: $(ENV_FILE)"; \
+		echo "Create .env from .env.example, or run 'make worktree-env' and use .env.worktree."; \
+		exit 1; \
+	fi
+endef
 
 # ---------- One-click commands ----------
 
 # First-time setup: install deps, start DB, run migrations
 setup:
+	$(REQUIRE_ENV)
 	@echo "==> Using env file: $(ENV_FILE)"
 	@echo "==> Installing dependencies..."
 	pnpm install
-	@echo "==> Starting PostgreSQL..."
-	@if pg_isready -h localhost -p $(POSTGRES_PORT) -U $(POSTGRES_USER) -d $(POSTGRES_DB) > /dev/null 2>&1; then \
-		echo "    PostgreSQL already running, skipping docker compose up."; \
-	else \
-		$(COMPOSE) up -d; \
-		echo "==> Waiting for PostgreSQL to be ready..."; \
-		until $(COMPOSE) exec -T postgres pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB) > /dev/null 2>&1; do \
-			sleep 1; \
-		done; \
-	fi
+	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	@echo "==> Running migrations..."
 	cd server && go run ./cmd/migrate up
 	@echo ""
-	@echo "✓ Setup complete! Run 'make seed' if you want example data, then 'make start' to launch the app."
+	@echo "✓ Setup complete! Run 'make start' to launch the app."
 
 # Start all services (backend + frontend)
 start:
+	$(REQUIRE_ENV)
 	@echo "Using env file: $(ENV_FILE)"
 	@echo "Backend: http://localhost:$(PORT)"
 	@echo "Frontend: http://localhost:$(FRONTEND_PORT)"
-	@if pg_isready -h localhost -p $(POSTGRES_PORT) -U $(POSTGRES_USER) -d $(POSTGRES_DB) > /dev/null 2>&1; then \
-		echo "PostgreSQL already running, skipping docker compose up."; \
-	else \
-		$(COMPOSE) up -d; \
-		until $(COMPOSE) exec -T postgres pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB) > /dev/null 2>&1; do \
-			sleep 1; \
-		done; \
-	fi
+	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	@echo "Starting backend and frontend..."
 	@trap 'kill 0' EXIT; \
 		(cd server && go run ./cmd/server) & \
@@ -69,15 +62,22 @@ start:
 
 # Stop all services
 stop:
+	$(REQUIRE_ENV)
 	@echo "Stopping services..."
 	@-lsof -ti:$(PORT) | xargs kill -9 2>/dev/null
 	@-lsof -ti:$(FRONTEND_PORT) | xargs kill -9 2>/dev/null
-	$(COMPOSE) down
-	@echo "✓ All services stopped."
+	@echo "✓ App processes stopped. Shared PostgreSQL is still running on localhost:5432."
 
 # Full verification: typecheck + unit tests + Go tests + E2E
 check:
-	@bash scripts/check.sh
+	$(REQUIRE_ENV)
+	@ENV_FILE="$(ENV_FILE)" bash scripts/check.sh
+
+db-up:
+	@$(COMPOSE) up -d postgres
+
+db-down:
+	@$(COMPOSE) down
 
 worktree-env:
 	@bash scripts/init-worktree-env.sh .env.worktree
@@ -110,6 +110,8 @@ check-worktree:
 
 # Go server
 dev:
+	$(REQUIRE_ENV)
+	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	cd server && go run ./cmd/server
 
 daemon:
@@ -126,20 +128,23 @@ build:
 	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)" -o bin/multica-cli ./cmd/multica
 
 test:
+	$(REQUIRE_ENV)
+	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	cd server && go test ./...
 
 # Database
 migrate-up:
+	$(REQUIRE_ENV)
+	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	cd server && go run ./cmd/migrate up
 
 migrate-down:
+	$(REQUIRE_ENV)
+	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	cd server && go run ./cmd/migrate down
 
 sqlc:
 	cd server && sqlc generate
-
-seed:
-	cd server && go run ./cmd/seed
 
 # Cleanup
 clean:

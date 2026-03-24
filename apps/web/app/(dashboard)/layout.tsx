@@ -3,11 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MulticaIcon } from "@multica/ui/components/multica-icon";
-import { SidebarProvider } from "@multica/ui/components/ui/sidebar";
-import { useAuth } from "../../lib/auth-context";
-import { TabProvider } from "../../lib/tab-store";
+import { SidebarProvider, SidebarInset } from "@multica/ui/components/ui/sidebar";
+import { useAuthStore } from "@/features/auth";
+import { useWorkspaceStore } from "@/features/workspace";
 import { AppSidebar } from "./_components/app-sidebar";
-import { TabBar } from "./_components/tab-bar";
 
 export default function DashboardLayout({
   children,
@@ -15,7 +14,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, workspace, isLoading } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const workspace = useWorkspaceStore((s) => s.workspace);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -34,16 +35,9 @@ export default function DashboardLayout({
   if (!user || !workspace) return null;
 
   return (
-    <TabProvider workspaceId={workspace.id}>
-      <SidebarProvider>
-        <AppSidebar />
-        <div className="relative flex w-full flex-1 flex-col overflow-hidden">
-          <TabBar />
-          <main className="flex-1 overflow-auto rounded-xl bg-background shadow-sm md:mr-2 md:mb-2">
-            {children}
-          </main>
-        </div>
-      </SidebarProvider>
-    </TabProvider>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="overflow-hidden">{children}</SidebarInset>
+    </SidebarProvider>
   );
 }

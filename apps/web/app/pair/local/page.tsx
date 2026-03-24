@@ -4,8 +4,17 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { DaemonPairingSession } from "@multica/types";
-import { api } from "../../../lib/api";
-import { useAuth } from "../../../lib/auth-context";
+import { Button } from "@multica/ui/components/ui/button";
+import { Label } from "@multica/ui/components/ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+} from "@multica/ui/components/ui/select";
+import { api } from "@/shared/api";
+import { useAuthStore } from "@/features/auth";
+import { useWorkspaceStore } from "@/features/workspace";
 
 function formatExpiresAt(value: string) {
   return new Date(value).toLocaleString("en-US", {
@@ -19,7 +28,10 @@ function formatExpiresAt(value: string) {
 function LocalDaemonPairPageContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
-  const { user, workspaces, workspace, isLoading } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const workspace = useWorkspaceStore((s) => s.workspace);
+  const workspaces = useWorkspaceStore((s) => s.workspaces);
   const [session, setSession] = useState<DaemonPairingSession | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -30,6 +42,10 @@ function LocalDaemonPairPageContent() {
     const next = `/pair/local?token=${encodeURIComponent(token)}`;
     return `/login?next=${encodeURIComponent(next)}`;
   }, [token]);
+  const selectedWorkspace = useMemo(
+    () => workspaces.find((item) => item.id === selectedWorkspaceId) ?? null,
+    [selectedWorkspaceId, workspaces],
+  );
 
   useEffect(() => {
     if (!token) {
@@ -77,7 +93,7 @@ function LocalDaemonPairPageContent() {
         {loading || isLoading ? (
           <div className="mt-8 text-sm text-muted-foreground">Loading pairing session...</div>
         ) : error ? (
-          <div className="mt-8 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mt-8 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         ) : session ? (
@@ -109,11 +125,11 @@ function LocalDaemonPairPageContent() {
                 </Link>
               </div>
             ) : session.status === "approved" || session.status === "claimed" ? (
-              <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <div className="mt-6 rounded-xl border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
                 This runtime is linked to a workspace. Return to the daemon window to finish setup.
               </div>
             ) : session.status === "expired" ? (
-              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="mt-6 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
                 This pairing link expired. Restart the daemon to generate a new link.
               </div>
             ) : workspaces.length === 0 ? (
@@ -123,28 +139,30 @@ function LocalDaemonPairPageContent() {
             ) : (
               <div className="mt-6 space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Workspace</label>
-                  <select
-                    value={selectedWorkspaceId}
-                    onChange={(e) => setSelectedWorkspaceId(e.target.value)}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    {workspaces.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Label className="mb-2">Workspace</Label>
+                  <Select value={selectedWorkspaceId} onValueChange={(v) => setSelectedWorkspaceId(v ?? "")}>
+                    <SelectTrigger className="w-full">
+                      <span className="flex flex-1 text-left">
+                        {selectedWorkspace?.name ?? "Select workspace"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workspaces.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={approve}
                   disabled={submitting || !selectedWorkspaceId}
-                  className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {submitting ? "Registering..." : "Register runtime"}
-                </button>
+                </Button>
               </div>
             )}
           </>

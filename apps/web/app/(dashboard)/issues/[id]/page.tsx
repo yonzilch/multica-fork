@@ -4,7 +4,6 @@ import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Bot,
   ChevronRight,
   GitBranch,
   Link2,
@@ -31,12 +30,15 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@multica/ui/components/ui/popover";
+import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
+import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
 import type { Issue, Comment, UpdateIssueRequest } from "@multica/types";
-import { StatusPicker, PriorityPicker, AssigneePicker } from "../_components";
-import { api } from "../../../../lib/api";
-import { useAuth } from "../../../../lib/auth-context";
-import { useWSEvent } from "../../../../lib/ws-context";
-import { useTabStore } from "../../../../lib/tab-store";
+import { StatusPicker, PriorityPicker, AssigneePicker } from "@/features/issues/components";
+import { api } from "@/shared/api";
+import { useAuthStore } from "@/features/auth";
+import { useActorName } from "@/features/workspace";
+import { useWSEvent } from "@/features/realtime";
 import type { CommentCreatedPayload, CommentUpdatedPayload, CommentDeletedPayload } from "@multica/types";
 
 // ---------------------------------------------------------------------------
@@ -60,42 +62,6 @@ function shortDate(date: string | null): string {
     month: "short",
     day: "numeric",
   });
-}
-
-// ---------------------------------------------------------------------------
-// Avatar
-// ---------------------------------------------------------------------------
-
-function ActorAvatar({
-  actorType,
-  actorId,
-  size = 20,
-}: {
-  actorType: string;
-  actorId: string;
-  size?: number;
-}) {
-  const { getActorName, getActorInitials } = useAuth();
-  const name = getActorName(actorType, actorId);
-  const initials = getActorInitials(actorType, actorId);
-  const isAgent = actorType === "agent";
-  return (
-    <div
-      className={`inline-flex shrink-0 items-center justify-center rounded-full font-medium ${
-        isAgent
-          ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
-          : "bg-muted text-muted-foreground"
-      }`}
-      style={{ width: size, height: size, fontSize: size * 0.45 }}
-      title={name}
-    >
-      {isAgent ? (
-        <Bot style={{ width: size * 0.55, height: size * 0.55 }} />
-      ) : (
-        initials
-      )}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +104,7 @@ function DueDatePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors">
         {date ? (
-          <span className={isOverdue ? "text-red-500" : ""}>
+          <span className={isOverdue ? "text-destructive" : ""}>
             {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
         ) : (
@@ -156,15 +122,17 @@ function DueDatePicker({
         />
         {date && (
           <div className="border-t px-3 py-2">
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => {
                 onUpdate({ due_date: null });
                 setOpen(false);
               }}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
             >
               Clear date
-            </button>
+            </Button>
           </div>
         )}
       </PopoverContent>
@@ -207,12 +175,14 @@ function AcceptanceCriteriaEditor({
           <div key={i} className="group flex items-start gap-2 text-sm">
             <span className="mt-0.5 text-muted-foreground">&bull;</span>
             <span className="flex-1">{item}</span>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => removeItem(i)}
               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
         ))}
       </div>
@@ -268,18 +238,20 @@ function ContextRefsEditor({
           <div key={i} className="group flex items-center gap-2 text-sm">
             <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             {isUrl(ref) ? (
-              <a href={ref} target="_blank" rel="noopener noreferrer" className="flex-1 text-blue-500 hover:underline truncate">
+              <a href={ref} target="_blank" rel="noopener noreferrer" className="flex-1 text-info hover:underline truncate">
                 {ref}
               </a>
             ) : (
               <span className="flex-1 truncate">{ref}</span>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => removeRef(i)}
               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
         ))}
       </div>
@@ -358,41 +330,44 @@ function RepositoryEditor({
       <PopoverContent align="end" className="w-auto min-w-48 p-3 space-y-2.5">
         <div className="text-xs font-medium">Repository</div>
         <div className="space-y-2">
-          <input
+          <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://github.com/org/repo"
-            className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring"
+            className="text-xs"
             autoFocus
           />
-          <input
+          <Input
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
             placeholder="Branch"
-            className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring"
+            className="text-xs"
           />
-          <input
+          <Input
             value={path}
             onChange={(e) => setPath(e.target.value)}
             placeholder="Path"
-            className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring"
+            className="text-xs"
           />
         </div>
         <div className="flex items-center justify-between pt-1">
           {repository && (
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={clear}
-              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+              className="text-muted-foreground hover:text-destructive"
             >
               Remove
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            size="xs"
             onClick={save}
-            className="ml-auto rounded-md bg-primary px-3 py-1 text-xs text-primary-foreground hover:bg-primary/90"
+            className="ml-auto"
           >
             Save
-          </button>
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
@@ -410,8 +385,8 @@ export default function IssueDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user, getActorName } = useAuth();
-  const { updateTabTitle, activeTabId, closeTabByPath } = useTabStore();
+  const user = useAuthStore((s) => s.user);
+  const { getActorName, getActorInitials } = useActorName();
   const [issue, setIssue] = useState<Issue | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -433,13 +408,6 @@ export default function IssueDetailPage({
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
-
-  // Sync tab title with loaded issue title
-  useEffect(() => {
-    if (issue?.title && activeTabId) {
-      updateTabTitle(activeTabId, issue.title);
-    }
-  }, [issue?.title, activeTabId, updateTabTitle]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -474,7 +442,6 @@ export default function IssueDetailPage({
     try {
       await api.deleteIssue(issue!.id);
       toast.success("Issue deleted");
-      closeTabByPath(`/issues/${id}`);
       router.push("/issues");
     } catch {
       toast.error("Failed to delete issue");
@@ -576,7 +543,7 @@ export default function IssueDetailPage({
           </div>
           <AlertDialog>
             <AlertDialogTrigger
-              render={<button className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" />}
+              render={<Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" />}
             >
               <Trash2 className="h-4 w-4" />
             </AlertDialogTrigger>
@@ -644,6 +611,8 @@ export default function IssueDetailPage({
                         actorType={comment.author_type}
                         actorId={comment.author_id}
                         size={28}
+                        getName={getActorName}
+                        getInitials={getActorInitials}
                       />
                       <span className="text-[13px] font-medium">
                         {getActorName(comment.author_type, comment.author_id)}
@@ -653,18 +622,22 @@ export default function IssueDetailPage({
                       </span>
                       {isOwn && (
                         <div className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
                             onClick={() => startEditComment(comment)}
-                            className="p-1 text-muted-foreground hover:text-foreground rounded"
+                            className="text-muted-foreground hover:text-foreground"
                           >
                             <Pencil className="h-3 w-3" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
                             onClick={() => handleDeleteComment(comment.id)}
-                            className="p-1 text-muted-foreground hover:text-destructive rounded"
+                            className="text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-3 w-3" />
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -691,20 +664,20 @@ export default function IssueDetailPage({
             {/* Comment input */}
             <form onSubmit={handleSubmitComment} className="mt-2 border-t pt-4">
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   type="text"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Leave a comment..."
-                  className="flex-1 rounded-md border bg-background px-3 py-2 text-[13px] placeholder:text-muted-foreground"
+                  className="flex-1 text-[13px]"
                 />
-                <button
+                <Button
                   type="submit"
+                  size="icon"
                   disabled={!commentText.trim() || submitting}
-                  className="rounded-md bg-primary p-2 text-primary-foreground disabled:opacity-50"
                 >
                   <Send className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -748,6 +721,8 @@ export default function IssueDetailPage({
                 actorType={issue.creator_type}
                 actorId={issue.creator_id}
                 size={18}
+                getName={getActorName}
+                getInitials={getActorInitials}
               />
               <span>{getActorName(issue.creator_type, issue.creator_id)}</span>
             </PropRow>

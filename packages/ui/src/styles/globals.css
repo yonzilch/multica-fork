@@ -104,6 +104,9 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -175,6 +178,11 @@
   --tool-running: oklch(0.6 0.18 250);   /* Blue: active/in-progress */
   --tool-success: oklch(0.72 0.12 145);  /* Green: completed */
   --tool-error: oklch(0.65 0.2 25);      /* Red: failed */
+
+  /* Semantic status colors — for general UI (badges, alerts, indicators) */
+  --success: oklch(0.55 0.16 145);       /* Green: saved, completed, online */
+  --warning: oklch(0.75 0.16 85);        /* Yellow/amber: blocked, attention */
+  --info: oklch(0.55 0.18 250);          /* Blue: links, dispatched, done */
 }
 
 /* =========================================================================
@@ -221,6 +229,10 @@
   --tool-running: oklch(0.65 0.2 250);
   --tool-success: oklch(0.65 0.15 145);
   --tool-error: oklch(0.7 0.2 22);
+
+  --success: oklch(0.65 0.15 145);
+  --warning: oklch(0.70 0.16 85);
+  --info: oklch(0.65 0.18 250);
 }
 
 /* Shiki dual themes: CSS-only light/dark switching via CSS variables */

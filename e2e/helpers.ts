@@ -1,31 +1,33 @@
 import { type Page } from "@playwright/test";
 import { TestApiClient } from "./fixtures";
 
+const DEFAULT_E2E_NAME = "E2E User";
+const DEFAULT_E2E_EMAIL = "e2e@multica.ai";
+const DEFAULT_E2E_WORKSPACE = "e2e-workspace";
+
 /**
- * Login as the seeded user (has workspace and issues).
+ * Log in as the default E2E user and ensure the workspace exists first.
  */
 export async function loginAsDefault(page: Page) {
+  const api = new TestApiClient();
+  await api.login(DEFAULT_E2E_EMAIL, DEFAULT_E2E_NAME);
+  await api.ensureWorkspace("E2E Workspace", DEFAULT_E2E_WORKSPACE);
+
   await page.goto("/login");
-  await page.fill('input[placeholder="Name"]', "Jiayuan Zhang");
-  await page.fill('input[placeholder="Email"]', "jiayuan@multica.ai");
+  await page.fill('input[placeholder="Name"]', DEFAULT_E2E_NAME);
+  await page.fill('input[placeholder="Email"]', DEFAULT_E2E_EMAIL);
   await page.click('button[type="submit"]');
   await page.waitForURL("**/issues", { timeout: 10000 });
 }
 
 /**
- * Open the workspace switcher dropdown menu.
- */
-/**
- * Create a TestApiClient logged in as the default seeded user.
+ * Create a TestApiClient logged in as the default E2E user.
  * Call api.cleanup() in afterEach to remove test data created during the test.
  */
 export async function createTestApi(): Promise<TestApiClient> {
   const api = new TestApiClient();
-  await api.login("jiayuan@multica.ai", "Jiayuan Zhang");
-  const workspaces = await api.getWorkspaces();
-  if (workspaces.length > 0) {
-    api.setWorkspaceId(workspaces[0].id);
-  }
+  await api.login(DEFAULT_E2E_EMAIL, DEFAULT_E2E_NAME);
+  await api.ensureWorkspace("E2E Workspace", DEFAULT_E2E_WORKSPACE);
   return api;
 }
 

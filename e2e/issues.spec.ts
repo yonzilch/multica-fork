@@ -49,7 +49,7 @@ test.describe("Issues", () => {
   });
 
   test("can navigate to issue detail page", async ({ page }) => {
-    // Create a known issue via API so we don't depend on seed data
+    // Create a known issue via API so the test controls its own fixture
     const issue = await api.createIssue("E2E Detail Test " + Date.now());
 
     // Reload to see the new issue

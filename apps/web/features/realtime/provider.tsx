@@ -10,7 +10,7 @@ import {
 } from "react";
 import { WSClient } from "@multica/sdk";
 import type { WSEventType } from "@multica/types";
-import { useAuth } from "./auth-context";
+import { useAuthStore } from "@/features/auth";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8080/ws";
 
@@ -23,7 +23,7 @@ interface WSContextValue {
 const WSContext = createContext<WSContextValue | null>(null);
 
 export function WSProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const user = useAuthStore((s) => s.user);
   const wsRef = useRef<WSClient | null>(null);
 
   useEffect(() => {
@@ -59,17 +59,4 @@ export function useWS() {
   const ctx = useContext(WSContext);
   if (!ctx) throw new Error("useWS must be used within WSProvider");
   return ctx;
-}
-
-/**
- * Hook that subscribes to a WebSocket event and calls the handler.
- * Automatically unsubscribes on cleanup.
- */
-export function useWSEvent(event: WSEventType, handler: EventHandler) {
-  const { subscribe } = useWS();
-
-  useEffect(() => {
-    const unsub = subscribe(event, handler);
-    return unsub;
-  }, [event, handler, subscribe]);
 }
