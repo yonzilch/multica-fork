@@ -58,26 +58,29 @@ func codexLogRoot() string {
 
 // codexEvent represents a line in a Codex session JSONL file.
 type codexEvent struct {
-	Type      string `json:"type"`
-	Timestamp string `json:"timestamp"`
-	Payload   *struct {
-		Type string          `json:"type"`
-		Msg  json.RawMessage `json:"msg"`
-	} `json:"payload"`
+	Type    string        `json:"type"`
+	Payload *codexPayload `json:"payload"`
 }
 
-// codexTokenCount represents the token_count info structure.
-type codexTokenCount struct {
-	Info *struct {
-		TotalTokenUsage *struct {
-			InputTokens           int64 `json:"input_tokens"`
-			OutputTokens          int64 `json:"output_tokens"`
-			CachedInputTokens     int64 `json:"cached_input_tokens"`
-			ReasoningOutputTokens int64 `json:"reasoning_output_tokens"`
-			TotalTokens           int64 `json:"total_tokens"`
-		} `json:"total_token_usage"`
-		Model string `json:"model"`
-	} `json:"info"`
+type codexPayload struct {
+	Type  string          `json:"type"`
+	Info  *codexTokenInfo `json:"info"`
+	Model string          `json:"model"` // present in turn_context events
+}
+
+type codexTokenInfo struct {
+	TotalTokenUsage *codexTokenUsage `json:"total_token_usage"`
+	LastTokenUsage  *codexTokenUsage `json:"last_token_usage"`
+	Model           string           `json:"model"`
+}
+
+type codexTokenUsage struct {
+	InputTokens           int64 `json:"input_tokens"`
+	OutputTokens          int64 `json:"output_tokens"`
+	CachedInputTokens     int64 `json:"cached_input_tokens"`
+	CacheReadInputTokens  int64 `json:"cache_read_input_tokens"`
+	ReasoningOutputTokens int64 `json:"reasoning_output_tokens"`
+	TotalTokens           int64 `json:"total_tokens"`
 }
 
 // parseCodexFile extracts the final cumulative token_count from a Codex session file.
@@ -95,7 +98,7 @@ func (s *Scanner) parseCodexFile(path string) *Record {
 		return nil
 	}
 
-	var lastUsage *codexTokenCount
+	var lastUsage *codexTokenUsage
 	var lastModel string
 
 	scanner := bufio.NewScanner(f)
@@ -104,40 +107,40 @@ func (s *Scanner) parseCodexFile(path string) *Record {
 	for scanner.Scan() {
 		line := scanner.Bytes()
 
-		// Fast pre-filter
-		if !bytesContains(line, `"token_count"`) {
+		// Fast pre-filter: only parse lines with token_count or turn_context
+		hasTokenCount := bytesContains(line, `"token_count"`)
+		hasTurnContext := bytesContains(line, `"turn_context"`)
+		if !hasTokenCount && !hasTurnContext {
 			continue
 		}
 
-		// Try direct event format: {"type": "event_msg", "payload": {"type": "token_count", ...}}
 		var evt codexEvent
-		if err := json.Unmarshal(line, &evt); err != nil {
+		if err := json.Unmarshal(line, &evt); err != nil || evt.Payload == nil {
 			continue
 		}
 
-		// Check if payload contains token_count
-		if evt.Payload != nil && evt.Payload.Type == "token_count" {
-			var tc codexTokenCount
-			if err := json.Unmarshal(evt.Payload.Msg, &tc); err == nil && tc.Info != nil && tc.Info.TotalTokenUsage != nil {
-				lastUsage = &tc
-				if tc.Info.Model != "" {
-					lastModel = tc.Info.Model
-				}
-				continue
-			}
+		// Track model from turn_context events
+		if evt.Type == "turn_context" && evt.Payload.Model != "" {
+			lastModel = evt.Payload.Model
+			continue
 		}
 
-		// Also try flat format where msg is at top level
-		var tc codexTokenCount
-		if err := json.Unmarshal(line, &tc); err == nil && tc.Info != nil && tc.Info.TotalTokenUsage != nil {
-			lastUsage = &tc
-			if tc.Info.Model != "" {
-				lastModel = tc.Info.Model
+		// Extract token usage from token_count events
+		if evt.Payload.Type == "token_count" && evt.Payload.Info != nil {
+			usage := evt.Payload.Info.TotalTokenUsage
+			if usage == nil {
+				usage = evt.Payload.Info.LastTokenUsage
+			}
+			if usage != nil {
+				lastUsage = usage
+				if evt.Payload.Info.Model != "" {
+					lastModel = evt.Payload.Info.Model
+				}
 			}
 		}
 	}
 
-	if lastUsage == nil || lastUsage.Info == nil || lastUsage.Info.TotalTokenUsage == nil {
+	if lastUsage == nil {
 		return nil
 	}
 
@@ -146,15 +149,19 @@ func (s *Scanner) parseCodexFile(path string) *Record {
 		model = "unknown"
 	}
 
-	usage := lastUsage.Info.TotalTokenUsage
+	cachedTokens := lastUsage.CachedInputTokens
+	if cachedTokens == 0 {
+		cachedTokens = lastUsage.CacheReadInputTokens
+	}
+
 	return &Record{
 		Date:             date,
 		Provider:         "codex",
 		Model:            model,
-		InputTokens:      usage.InputTokens,
-		OutputTokens:     usage.OutputTokens + usage.ReasoningOutputTokens,
-		CacheReadTokens:  usage.CachedInputTokens,
-		CacheWriteTokens: 0, // Codex doesn't have cache write tokens
+		InputTokens:      lastUsage.InputTokens,
+		OutputTokens:     lastUsage.OutputTokens + lastUsage.ReasoningOutputTokens,
+		CacheReadTokens:  cachedTokens,
+		CacheWriteTokens: 0,
 	}
 }
 
