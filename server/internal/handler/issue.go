@@ -220,6 +220,16 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine creator identity: agent (via X-Agent-ID header) or member.
+	creatorType := "member"
+	actualCreatorID := creatorID
+	if agentID := r.Header.Get("X-Agent-ID"); agentID != "" {
+		if agent, err := h.Queries.GetAgent(r.Context(), parseUUID(agentID)); err == nil && uuidToString(agent.WorkspaceID) == workspaceID {
+			creatorType = "agent"
+			actualCreatorID = agentID
+		}
+	}
+
 	issue, err := qtx.CreateIssue(r.Context(), db.CreateIssueParams{
 		WorkspaceID:        parseUUID(workspaceID),
 		Title:              req.Title,
@@ -228,8 +238,8 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		Priority:           priority,
 		AssigneeType:       assigneeType,
 		AssigneeID:         assigneeID,
-		CreatorType:        "member",
-		CreatorID:          parseUUID(creatorID),
+		CreatorType:        creatorType,
+		CreatorID:          parseUUID(actualCreatorID),
 		ParentIssueID:      parentIssueID,
 		Position:           0,
 		DueDate:            dueDate,
@@ -249,7 +259,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 	resp := issueToResponse(issue, prefix)
 	slog.Info("issue created", append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID), "title", issue.Title, "status", issue.Status, "workspace_id", workspaceID)...)
-	h.publish(protocol.EventIssueCreated, workspaceID, "member", creatorID, map[string]any{"issue": resp})
+	h.publish(protocol.EventIssueCreated, workspaceID, creatorType, actualCreatorID, map[string]any{"issue": resp})
 
 	// Only ready issues in todo are enqueued for agents.
 	if issue.AssigneeType.Valid && issue.AssigneeID.Valid {
@@ -371,7 +381,17 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	dueDateChanged := prevDueDate != resp.DueDate && (prevDueDate == nil) != (resp.DueDate == nil) ||
 		(prevDueDate != nil && resp.DueDate != nil && *prevDueDate != *resp.DueDate)
 
-	h.publish(protocol.EventIssueUpdated, workspaceID, "member", userID, map[string]any{
+	// Determine actor identity: agent (via X-Agent-ID header) or member.
+	actorType := "member"
+	actorID := userID
+	if agentID := r.Header.Get("X-Agent-ID"); agentID != "" {
+		if agent, err := h.Queries.GetAgent(r.Context(), parseUUID(agentID)); err == nil && uuidToString(agent.WorkspaceID) == workspaceID {
+			actorType = "agent"
+			actorID = agentID
+		}
+	}
+
+	h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{
 		"issue":               resp,
 		"assignee_changed":    assigneeChanged,
 		"status_changed":      statusChanged,

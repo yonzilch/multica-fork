@@ -21,6 +21,7 @@ type APIClient struct {
 	BaseURL     string
 	WorkspaceID string
 	Token       string
+	AgentID     string // When set, requests are attributed to this agent instead of the user.
 	HTTPClient  *http.Client
 }
 
@@ -40,6 +41,9 @@ func (c *APIClient) setHeaders(req *http.Request) {
 	}
 	if c.WorkspaceID != "" {
 		req.Header.Set("X-Workspace-ID", c.WorkspaceID)
+	}
+	if c.AgentID != "" {
+		req.Header.Set("X-Agent-ID", c.AgentID)
 	}
 }
 

@@ -101,10 +101,22 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Determine author identity: agent (via X-Agent-ID header) or member.
+	authorType := "member"
+	authorID := userID
+	if agentID := r.Header.Get("X-Agent-ID"); agentID != "" {
+		// Validate the agent exists in this workspace.
+		agent, err := h.Queries.GetAgent(r.Context(), parseUUID(agentID))
+		if err == nil && uuidToString(agent.WorkspaceID) == uuidToString(issue.WorkspaceID) {
+			authorType = "agent"
+			authorID = agentID
+		}
+	}
+
 	comment, err := h.Queries.CreateComment(r.Context(), db.CreateCommentParams{
 		IssueID:    issue.ID,
-		AuthorType: "member",
-		AuthorID:   parseUUID(userID),
+		AuthorType: authorType,
+		AuthorID:   parseUUID(authorID),
 		Content:    req.Content,
 		Type:       req.Type,
 		ParentID:   parentID,
@@ -117,7 +129,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	resp := commentToResponse(comment)
 	slog.Info("comment created", append(logger.RequestAttrs(r), "comment_id", uuidToString(comment.ID), "issue_id", issueID)...)
-	h.publish(protocol.EventCommentCreated, uuidToString(issue.WorkspaceID), "member", userID, map[string]any{
+	h.publish(protocol.EventCommentCreated, uuidToString(issue.WorkspaceID), authorType, authorID, map[string]any{
 		"comment":             resp,
 		"issue_title":         issue.Title,
 		"issue_assignee_type": textToPtr(issue.AssigneeType),
@@ -126,8 +138,8 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// If the issue is assigned to an agent with on_comment trigger, enqueue a new task.
-	// The agent will resume its prior session and see this comment.
-	if h.shouldEnqueueOnComment(r.Context(), issue) {
+	// Skip when the comment comes from the assigned agent itself to avoid loops.
+	if authorType == "member" && h.shouldEnqueueOnComment(r.Context(), issue) {
 		if _, err := h.TaskService.EnqueueTaskForIssue(r.Context(), issue); err != nil {
 			slog.Warn("enqueue agent task on comment failed", "issue_id", issueID, "error", err)
 		}

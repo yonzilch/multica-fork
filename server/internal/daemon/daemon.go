@@ -662,6 +662,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string) (TaskR
 		"MULTICA_DAEMON_PORT":  fmt.Sprintf("%d", d.cfg.HealthPort),
 		"MULTICA_WORKSPACE_ID": d.workspaceIDForRuntime(task.RuntimeID),
 		"MULTICA_AGENT_NAME":   agentName,
+		"MULTICA_AGENT_ID":     task.AgentID,
 		"MULTICA_TASK_ID":      task.ID,
 	}
 	// Point Codex to the per-task CODEX_HOME so it discovers skills natively
