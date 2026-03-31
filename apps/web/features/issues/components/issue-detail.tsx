@@ -5,7 +5,6 @@ import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Bot,
   Calendar,
   Check,
   ChevronLeft,
@@ -421,9 +420,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                         key={m.user_id}
                         onClick={() => handleUpdateField({ assignee_type: "member", assignee_id: m.user_id })}
                       >
-                        <div className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-[8px] font-medium text-muted-foreground">
-                          {getActorInitials("member", m.user_id)}
-                        </div>
+                        <ActorAvatar actorType="member" actorId={m.user_id} size={16} />
                         {m.name}
                         {issue.assignee_type === "member" && issue.assignee_id === m.user_id && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
                       </DropdownMenuItem>
@@ -433,9 +430,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                         key={a.id}
                         onClick={() => handleUpdateField({ assignee_type: "agent", assignee_id: a.id })}
                       >
-                        <div className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
-                          <Bot className="size-2.5" />
-                        </div>
+                        <ActorAvatar actorType="agent" actorId={a.id} size={16} />
                         {a.name}
                         {issue.assignee_type === "agent" && issue.assignee_id === a.id && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
                       </DropdownMenuItem>
@@ -900,9 +895,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                           <DropdownMenuLabel>Members</DropdownMenuLabel>
                           {members.map((m) => (
                             <DropdownMenuItem key={m.user_id} onClick={() => handleUpdateField({ assignee_type: "member", assignee_id: m.user_id })}>
-                              <div className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-[8px] font-medium text-muted-foreground">
-                                {getActorInitials("member", m.user_id)}
-                              </div>
+                              <ActorAvatar actorType="member" actorId={m.user_id} size={16} />
                               {m.name}
                             </DropdownMenuItem>
                           ))}
@@ -916,9 +909,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                           <DropdownMenuLabel>Agents</DropdownMenuLabel>
                           {agents.map((a) => (
                             <DropdownMenuItem key={a.id} onClick={() => handleUpdateField({ assignee_type: "agent", assignee_id: a.id })}>
-                              <div className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
-                                <Bot className="size-2.5" />
-                              </div>
+                              <ActorAvatar actorType="agent" actorId={a.id} size={16} />
                               {a.name}
                             </DropdownMenuItem>
                           ))}

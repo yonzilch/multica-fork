@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, Bot, Lock, UserMinus } from "lucide-react";
+import { X, Trash2, Lock, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,10 +22,11 @@ import {
 import type { Agent, UpdateIssueRequest } from "@/shared/types";
 import { ALL_STATUSES, STATUS_CONFIG, PRIORITY_ORDER, PRIORITY_CONFIG } from "@/features/issues/config";
 import { useAuthStore } from "@/features/auth";
-import { useWorkspaceStore, useActorName } from "@/features/workspace";
+import { useWorkspaceStore } from "@/features/workspace";
 import { useIssueStore } from "@/features/issues/store";
 import { useIssueSelectionStore } from "@/features/issues/stores/selection-store";
 import { api } from "@/shared/api";
+import { ActorAvatar } from "@/components/common/actor-avatar";
 import { StatusIcon } from "./status-icon";
 import { PriorityIcon } from "./priority-icon";
 
@@ -229,8 +230,6 @@ function BatchAssigneePicker({
   const user = useAuthStore((s) => s.user);
   const members = useWorkspaceStore((s) => s.members);
   const agents = useWorkspaceStore((s) => s.agents);
-  const { getActorInitials } = useActorName();
-
   const currentMember = members.find((m) => m.user_id === user?.id);
   const memberRole = currentMember?.role;
 
@@ -295,9 +294,7 @@ function BatchAssigneePicker({
                   }}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
                 >
-                  <div className="inline-flex size-4.5 shrink-0 items-center justify-center rounded-full bg-muted text-[8px] font-medium text-muted-foreground">
-                    {getActorInitials("member", m.user_id)}
-                  </div>
+                  <ActorAvatar actorType="member" actorId={m.user_id} size={18} />
                   <span>{m.name}</span>
                 </button>
               ))}
@@ -323,9 +320,7 @@ function BatchAssigneePicker({
                     }}
                     className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${allowed ? "hover:bg-accent" : "opacity-50 cursor-not-allowed"}`}
                   >
-                    <div className={`inline-flex size-4.5 shrink-0 items-center justify-center rounded-full ${allowed ? "bg-info/10 text-info" : "bg-muted text-muted-foreground"}`}>
-                      <Bot className="size-2.5" />
-                    </div>
+                    <ActorAvatar actorType="agent" actorId={a.id} size={18} />
                     <span className={allowed ? "" : "text-muted-foreground"}>{a.name}</span>
                     {a.visibility === "private" && (
                       <Lock className="ml-auto h-3 w-3 text-muted-foreground" />

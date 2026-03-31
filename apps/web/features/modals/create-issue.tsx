@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, CalendarDays, Check, ChevronRight, Maximize2, Minimize2, UserMinus, X as XIcon } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Maximize2, Minimize2, UserMinus, X as XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { IssueStatus, IssuePriority, IssueAssigneeType } from "@/shared/types";
@@ -35,6 +35,7 @@ import { useIssueDraftStore } from "@/features/issues/stores/draft-store";
 import { api } from "@/shared/api";
 import { useFileUpload } from "@/shared/hooks/use-file-upload";
 import { FileUploadButton } from "@/components/common/file-upload-button";
+import { ActorAvatar } from "@/components/common/actor-avatar";
 
 // ---------------------------------------------------------------------------
 // Pill trigger — shared rounded-full button style for toolbar
@@ -69,7 +70,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
   const workspaceName = useWorkspaceStore((s) => s.workspace?.name);
   const members = useWorkspaceStore((s) => s.members);
   const agents = useWorkspaceStore((s) => s.agents);
-  const { getActorName, getActorInitials } = useActorName();
+  const { getActorName } = useActorName();
 
   const draft = useIssueDraftStore((s) => s.draft);
   const setDraft = useIssueDraftStore((s) => s.setDraft);
@@ -291,14 +292,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                 <PillButton>
                   {assigneeType && assigneeId ? (
                     <>
-                      <div
-                        className={cn(
-                          "inline-flex shrink-0 items-center justify-center rounded-full font-medium text-[8px] size-4",
-                          assigneeType === "agent" ? "bg-info/10 text-info" : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {assigneeType === "agent" ? <Bot className="size-2.5" /> : getActorInitials(assigneeType, assigneeId)}
-                      </div>
+                      <ActorAvatar actorType={assigneeType} actorId={assigneeId} size={16} />
                       <span>{assigneeLabel}</span>
                     </>
                   ) : (
@@ -345,9 +339,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
                       >
-                        <div className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-[8px] font-medium text-muted-foreground">
-                          {getActorInitials("member", m.user_id)}
-                        </div>
+                        <ActorAvatar actorType="member" actorId={m.user_id} size={16} />
                         <span>{m.name}</span>
                       </button>
                     ))}
@@ -368,9 +360,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
                       >
-                        <div className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
-                          <Bot className="size-2.5" />
-                        </div>
+                        <ActorAvatar actorType="agent" actorId={a.id} size={16} />
                         <span>{a.name}</span>
                       </button>
                     ))}
