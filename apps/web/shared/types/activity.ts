@@ -1,4 +1,5 @@
 import type { Reaction } from "./comment";
+import type { Attachment } from "./attachment";
 
 export interface TimelineEntry {
   type: "activity" | "comment";
@@ -15,4 +16,5 @@ export interface TimelineEntry {
   updated_at?: string;
   comment_type?: string;
   reactions?: Reaction[];
+  attachments?: Attachment[];
 }

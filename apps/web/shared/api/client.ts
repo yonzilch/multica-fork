@@ -35,6 +35,7 @@ import type {
   RuntimePing,
   TimelineEntry,
   TaskMessagePayload,
+  Attachment,
 } from "@/shared/types";
 import { type Logger, noopLogger } from "@/shared/logger";
 
@@ -62,6 +63,35 @@ export class ApiClient {
     this.workspaceId = id;
   }
 
+  private authHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
+    if (this.workspaceId) headers["X-Workspace-ID"] = this.workspaceId;
+    return headers;
+  }
+
+  private handleUnauthorized() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("multica_token");
+      localStorage.removeItem("multica_workspace_id");
+      this.token = null;
+      this.workspaceId = null;
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+  }
+
+  private async parseErrorMessage(res: Response, fallback: string): Promise<string> {
+    try {
+      const data = await res.json() as { error?: string };
+      if (typeof data.error === "string" && data.error) return data.error;
+    } catch {
+      // Ignore non-JSON error bodies.
+    }
+    return fallback;
+  }
+
   private async fetch<T>(path: string, init?: RequestInit): Promise<T> {
     const rid = crypto.randomUUID().slice(0, 8);
     const start = Date.now();
@@ -70,14 +100,9 @@ export class ApiClient {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "X-Request-ID": rid,
+      ...this.authHeaders(),
       ...((init?.headers as Record<string, string>) ?? {}),
     };
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
-    }
-    if (this.workspaceId) {
-      headers["X-Workspace-ID"] = this.workspaceId;
-    }
 
     this.logger.info(`→ ${method} ${path}`, { rid });
 
@@ -87,25 +112,8 @@ export class ApiClient {
     });
 
     if (!res.ok) {
-      if (res.status === 401 && typeof window !== "undefined") {
-        localStorage.removeItem("multica_token");
-        localStorage.removeItem("multica_workspace_id");
-        this.token = null;
-        this.workspaceId = null;
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
-      }
-
-      let message = `API error: ${res.status} ${res.statusText}`;
-      try {
-        const data = await res.json() as { error?: string };
-        if (typeof data.error === "string" && data.error) {
-          message = data.error;
-        }
-      } catch {
-        // Ignore non-JSON error bodies.
-      }
+      if (res.status === 401) this.handleUnauthorized();
+      const message = await this.parseErrorMessage(res, `API error: ${res.status} ${res.statusText}`);
       this.logger.error(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms`, error: message });
       throw new Error(message);
     }
@@ -518,5 +526,41 @@ export class ApiClient {
 
   async revokePersonalAccessToken(id: string): Promise<void> {
     await this.fetch(`/api/tokens/${id}`, { method: "DELETE" });
+  }
+
+  // File Upload & Attachments
+  async uploadFile(file: File, opts?: { issueId?: string; commentId?: string }): Promise<Attachment> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (opts?.issueId) formData.append("issue_id", opts.issueId);
+    if (opts?.commentId) formData.append("comment_id", opts.commentId);
+
+    const rid = crypto.randomUUID().slice(0, 8);
+    const start = Date.now();
+    this.logger.info("→ POST /api/upload-file", { rid });
+
+    const res = await fetch(`${this.baseUrl}/api/upload-file`, {
+      method: "POST",
+      headers: this.authHeaders(),
+      body: formData,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) this.handleUnauthorized();
+      const message = await this.parseErrorMessage(res, `Upload failed: ${res.status}`);
+      this.logger.error(`← ${res.status} /api/upload-file`, { rid, duration: `${Date.now() - start}ms`, error: message });
+      throw new Error(message);
+    }
+
+    this.logger.info(`← ${res.status} /api/upload-file`, { rid, duration: `${Date.now() - start}ms` });
+    return res.json() as Promise<Attachment>;
+  }
+
+  async listAttachments(issueId: string): Promise<Attachment[]> {
+    return this.fetch(`/api/issues/${issueId}/attachments`);
+  }
+
+  async deleteAttachment(id: string): Promise<void> {
+    await this.fetch(`/api/attachments/${id}`, { method: "DELETE" });
   }
 }

@@ -58,6 +58,7 @@ vi.mock("@/features/workspace", () => ({
       if (type === "agent") return "CA";
       return "??";
     },
+    getActorAvatarUrl: () => null,
   }),
 }));
 
@@ -296,6 +297,7 @@ describe("IssueDetailPage", () => {
       author_id: "user-1",
       parent_id: null,
       reactions: [],
+      attachments: [],
       created_at: "2026-01-18T00:00:00Z",
       updated_at: "2026-01-18T00:00:00Z",
     };

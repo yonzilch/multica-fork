@@ -20,6 +20,7 @@ export interface Comment {
   type: CommentType;
   parent_id: string | null;
   reactions: Reaction[];
+  attachments: import("./attachment").Attachment[];
   created_at: string;
   updated_at: string;
 }

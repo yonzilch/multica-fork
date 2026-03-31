@@ -34,6 +34,7 @@ vi.mock("@/features/workspace", () => ({
     getActorName: (type: string, id: string) =>
       type === "member" ? "Test User" : "Claude Agent",
     getActorInitials: () => "TU",
+    getActorAvatarUrl: () => null,
   }),
   useWorkspaceStore: Object.assign(
     (selector?: any) => {

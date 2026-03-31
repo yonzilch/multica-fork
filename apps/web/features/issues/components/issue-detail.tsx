@@ -69,6 +69,7 @@ import { useIssueTimeline } from "@/features/issues/hooks/use-issue-timeline";
 import { useIssueReactions } from "@/features/issues/hooks/use-issue-reactions";
 import { useIssueSubscribers } from "@/features/issues/hooks/use-issue-subscribers";
 import { ReactionBar } from "@/components/common/reaction-bar";
+import { useFileUpload } from "@/shared/hooks/use-file-upload";
 import { timeAgo } from "@/shared/utils";
 
 function shortDate(date: string | null): string {
@@ -179,6 +180,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
   const prevIssue = currentIndex > 0 ? allIssues[currentIndex - 1] : null;
   const nextIssue = currentIndex < allIssues.length - 1 ? allIssues[currentIndex + 1] : null;
   const { getActorName, getActorInitials } = useActorName();
+  const { uploadWithToast } = useFileUpload();
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: layoutId,
   });
@@ -247,6 +249,11 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
       });
     },
     [issue, id],
+  );
+
+  const handleDescriptionUpload = useCallback(
+    (file: File) => uploadWithToast(file, { issueId: id }),
+    [uploadWithToast, id],
   );
 
   const handleDelete = async () => {
@@ -574,6 +581,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
             defaultValue={issue.description || ""}
             placeholder="Add description..."
             onUpdate={(md) => handleUpdateField({ description: md || undefined })}
+            onUploadFile={handleDescriptionUpload}
             debounceMs={1500}
             className="mt-5"
           />
@@ -741,6 +749,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                     return (
                       <CommentCard
                         key={entry.id}
+                        issueId={id}
                         entry={entry}
                         allReplies={repliesByParent}
                         currentUserId={user?.id}
@@ -803,7 +812,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
 
             {/* Bottom comment input — no avatar, full width */}
             <div className="mt-4">
-              <CommentInput onSubmit={submitComment} />
+              <CommentInput issueId={id} onSubmit={submitComment} />
             </div>
           </div>
         </div>

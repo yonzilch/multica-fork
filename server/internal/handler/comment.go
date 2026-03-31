@@ -15,33 +15,38 @@ import (
 )
 
 type CommentResponse struct {
-	ID         string             `json:"id"`
-	IssueID    string             `json:"issue_id"`
-	AuthorType string             `json:"author_type"`
-	AuthorID   string             `json:"author_id"`
-	Content    string             `json:"content"`
-	Type       string             `json:"type"`
-	ParentID   *string            `json:"parent_id"`
-	CreatedAt  string             `json:"created_at"`
-	UpdatedAt  string             `json:"updated_at"`
-	Reactions  []ReactionResponse `json:"reactions"`
+	ID          string               `json:"id"`
+	IssueID     string               `json:"issue_id"`
+	AuthorType  string               `json:"author_type"`
+	AuthorID    string               `json:"author_id"`
+	Content     string               `json:"content"`
+	Type        string               `json:"type"`
+	ParentID    *string              `json:"parent_id"`
+	CreatedAt   string               `json:"created_at"`
+	UpdatedAt   string               `json:"updated_at"`
+	Reactions   []ReactionResponse   `json:"reactions"`
+	Attachments []AttachmentResponse `json:"attachments"`
 }
 
-func commentToResponse(c db.Comment, reactions []ReactionResponse) CommentResponse {
+func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments []AttachmentResponse) CommentResponse {
 	if reactions == nil {
 		reactions = []ReactionResponse{}
 	}
+	if attachments == nil {
+		attachments = []AttachmentResponse{}
+	}
 	return CommentResponse{
-		ID:         uuidToString(c.ID),
-		IssueID:    uuidToString(c.IssueID),
-		AuthorType: c.AuthorType,
-		AuthorID:   uuidToString(c.AuthorID),
-		Content:    c.Content,
-		Type:       c.Type,
-		ParentID:   uuidToPtr(c.ParentID),
-		CreatedAt:  timestampToString(c.CreatedAt),
-		UpdatedAt:  timestampToString(c.UpdatedAt),
-		Reactions:  reactions,
+		ID:          uuidToString(c.ID),
+		IssueID:     uuidToString(c.IssueID),
+		AuthorType:  c.AuthorType,
+		AuthorID:    uuidToString(c.AuthorID),
+		Content:     c.Content,
+		Type:        c.Type,
+		ParentID:    uuidToPtr(c.ParentID),
+		CreatedAt:   timestampToString(c.CreatedAt),
+		UpdatedAt:   timestampToString(c.UpdatedAt),
+		Reactions:   reactions,
+		Attachments: attachments,
 	}
 }
 
@@ -66,10 +71,12 @@ func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
 		commentIDs[i] = c.ID
 	}
 	grouped := h.groupReactions(r, commentIDs)
+	groupedAtt := h.groupAttachments(r, commentIDs)
 
 	resp := make([]CommentResponse, len(comments))
 	for i, c := range comments {
-		resp[i] = commentToResponse(c, grouped[uuidToString(c.ID)])
+		cid := uuidToString(c.ID)
+		resp[i] = commentToResponse(c, grouped[cid], groupedAtt[cid])
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -135,7 +142,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := commentToResponse(comment, nil)
+	resp := commentToResponse(comment, nil, nil)
 	slog.Info("comment created", append(logger.RequestAttrs(r), "comment_id", uuidToString(comment.ID), "issue_id", issueID)...)
 	h.publish(protocol.EventCommentCreated, uuidToString(issue.WorkspaceID), authorType, authorID, map[string]any{
 		"comment":             resp,
@@ -293,9 +300,11 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch reactions for the updated comment.
+	// Fetch reactions and attachments for the updated comment.
 	grouped := h.groupReactions(r, []pgtype.UUID{comment.ID})
-	resp := commentToResponse(comment, grouped[uuidToString(comment.ID)])
+	groupedAtt := h.groupAttachments(r, []pgtype.UUID{comment.ID})
+	cid := uuidToString(comment.ID)
+	resp := commentToResponse(comment, grouped[cid], groupedAtt[cid])
 	slog.Info("comment updated", append(logger.RequestAttrs(r), "comment_id", commentId)...)
 	h.publish(protocol.EventCommentUpdated, workspaceID, actorType, actorID, map[string]any{"comment": resp})
 	writeJSON(w, http.StatusOK, resp)

@@ -56,6 +56,15 @@ function createComponents(
   onFileClick?: (path: string) => void
 ): Partial<Components> {
   const baseComponents: Partial<Components> = {
+    // Images: render uploaded images with constrained sizing
+    img: ({ src, alt }) => (
+      <img
+        src={src}
+        alt={alt ?? ""}
+        className="max-w-full h-auto rounded-md my-2"
+        loading="lazy"
+      />
+    ),
     // Links: Make clickable with callbacks, or render as mention
     a: ({ href, children }) => {
       // Mention links: mention://member/id or mention://agent/id

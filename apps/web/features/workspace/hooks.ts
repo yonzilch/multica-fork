@@ -32,5 +32,11 @@ export function useActorName() {
       .slice(0, 2);
   };
 
-  return { getMemberName, getAgentName, getActorName, getActorInitials };
+  const getActorAvatarUrl = (type: string, id: string): string | null => {
+    if (type === "member") return members.find((m) => m.user_id === id)?.avatar_url ?? null;
+    if (type === "agent") return agents.find((a) => a.id === id)?.avatar_url ?? null;
+    return null;
+  };
+
+  return { getMemberName, getAgentName, getActorName, getActorInitials, getActorAvatarUrl };
 }

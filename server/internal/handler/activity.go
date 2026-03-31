@@ -25,11 +25,12 @@ type TimelineEntry struct {
 	Details json.RawMessage `json:"details,omitempty"`
 
 	// Comment-only fields
-	Content     *string            `json:"content,omitempty"`
-	ParentID    *string            `json:"parent_id,omitempty"`
-	UpdatedAt   *string            `json:"updated_at,omitempty"`
-	CommentType *string            `json:"comment_type,omitempty"`
-	Reactions   []ReactionResponse `json:"reactions,omitempty"`
+	Content     *string              `json:"content,omitempty"`
+	ParentID    *string              `json:"parent_id,omitempty"`
+	UpdatedAt   *string              `json:"updated_at,omitempty"`
+	CommentType *string              `json:"comment_type,omitempty"`
+	Reactions   []ReactionResponse   `json:"reactions,omitempty"`
+	Attachments []AttachmentResponse `json:"attachments,omitempty"`
 }
 
 // ListTimeline returns a merged, chronologically-sorted timeline of activities
@@ -79,20 +80,22 @@ func (h *Handler) ListTimeline(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Fetch reactions for all comments in one batch.
+	// Fetch reactions and attachments for all comments in one batch.
 	commentIDs := make([]pgtype.UUID, len(comments))
 	for i, c := range comments {
 		commentIDs[i] = c.ID
 	}
 	grouped := h.groupReactions(r, commentIDs)
+	groupedAtt := h.groupAttachments(r, commentIDs)
 
 	for _, c := range comments {
 		content := c.Content
 		commentType := c.Type
 		updatedAt := timestampToString(c.UpdatedAt)
+		cid := uuidToString(c.ID)
 		timeline = append(timeline, TimelineEntry{
 			Type:        "comment",
-			ID:          uuidToString(c.ID),
+			ID:          cid,
 			ActorType:   c.AuthorType,
 			ActorID:     uuidToString(c.AuthorID),
 			Content:     &content,
@@ -100,7 +103,8 @@ func (h *Handler) ListTimeline(w http.ResponseWriter, r *http.Request) {
 			ParentID:    uuidToPtr(c.ParentID),
 			CreatedAt:   timestampToString(c.CreatedAt),
 			UpdatedAt:   &updatedAt,
-			Reactions:   grouped[uuidToString(c.ID)],
+			Reactions:   grouped[cid],
+			Attachments: groupedAtt[cid],
 		})
 	}
 

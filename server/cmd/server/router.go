@@ -12,11 +12,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/service"
+	"github.com/multica-ai/multica/server/internal/storage"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -47,7 +49,9 @@ func allowedOrigins() []string {
 func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus) chi.Router {
 	queries := db.New(pool)
 	emailSvc := service.NewEmailService()
-	h := handler.New(queries, pool, hub, bus, emailSvc)
+	s3 := storage.NewS3StorageFromEnv()
+	cfSigner := auth.NewCloudFrontSignerFromEnv()
+	h := handler.New(queries, pool, hub, bus, emailSvc, s3, cfSigner)
 
 	r := chi.NewRouter()
 
@@ -106,10 +110,12 @@ func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus) chi.Route
 	// Protected API routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(queries))
+		r.Use(middleware.RefreshCloudFrontCookies(cfSigner))
 
 		// --- User-scoped routes (no workspace context required) ---
 		r.Get("/api/me", h.GetMe)
 		r.Patch("/api/me", h.UpdateMe)
+		r.Post("/api/upload-file", h.UploadFile)
 
 		r.Route("/api/workspaces", func(r chi.Router) {
 			r.Get("/", h.ListWorkspaces)
@@ -170,8 +176,12 @@ func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus) chi.Route
 					r.Get("/task-runs", h.ListTasksByIssue)
 					r.Post("/reactions", h.AddIssueReaction)
 					r.Delete("/reactions", h.RemoveIssueReaction)
+					r.Get("/attachments", h.ListAttachments)
 				})
 			})
+
+			// Attachments
+			r.Delete("/api/attachments/{id}", h.DeleteAttachment)
 
 			// Comments
 			r.Route("/api/comments/{commentId}", func(r chi.Router) {
