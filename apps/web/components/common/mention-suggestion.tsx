@@ -6,10 +6,11 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
-import { Bot } from "lucide-react";
+import { Bot, Hash } from "lucide-react";
 import { ReactRenderer } from "@tiptap/react";
 import { computePosition, offset, flip, shift } from "@floating-ui/dom";
 import { useWorkspaceStore } from "@/features/workspace";
+import { useIssueStore } from "@/features/issues";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 
 // ---------------------------------------------------------------------------
@@ -19,7 +20,9 @@ import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 export interface MentionItem {
   id: string;
   label: string;
-  type: "member" | "agent";
+  type: "member" | "agent" | "issue";
+  /** Secondary text shown below the label (e.g. issue title) */
+  description?: string;
 }
 
 interface MentionListProps {
@@ -88,6 +91,10 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
               <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
                 <Bot className="h-3 w-3" />
               </span>
+            ) : item.type === "issue" ? (
+              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Hash className="h-3 w-3" />
+              </span>
             ) : (
               <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-[9px] font-medium">
                 {item.label
@@ -98,7 +105,12 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
                   .slice(0, 2)}
               </span>
             )}
-            <span className="truncate">{item.label}</span>
+            <div className="flex flex-col min-w-0">
+              <span className="truncate">{item.label}</span>
+              {item.description && (
+                <span className="truncate text-xs text-muted-foreground">{item.description}</span>
+              )}
+            </div>
           </button>
         ))}
       </div>
@@ -117,6 +129,7 @@ export function createMentionSuggestion(): Omit<
   return {
     items: ({ query }) => {
       const { members, agents } = useWorkspaceStore.getState();
+      const { issues } = useIssueStore.getState();
       const q = query.toLowerCase();
 
       const memberItems: MentionItem[] = members
@@ -131,7 +144,20 @@ export function createMentionSuggestion(): Omit<
         .filter((a) => a.name.toLowerCase().includes(q))
         .map((a) => ({ id: a.id, label: a.name, type: "agent" as const }));
 
-      return [...memberItems, ...agentItems].slice(0, 10);
+      const issueItems: MentionItem[] = issues
+        .filter(
+          (i) =>
+            i.identifier.toLowerCase().includes(q) ||
+            i.title.toLowerCase().includes(q),
+        )
+        .map((i) => ({
+          id: i.id,
+          label: i.identifier,
+          type: "issue" as const,
+          description: i.title,
+        }));
+
+      return [...memberItems, ...agentItems, ...issueItems].slice(0, 10);
     },
 
     render: () => {

@@ -1,10 +1,11 @@
 import * as React from 'react'
-import ReactMarkdown, { type Components } from 'react-markdown'
+import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { CodeBlock, InlineCode } from './CodeBlock'
 import { preprocessLinks } from './linkify'
+import { IssueMentionCard } from '@/features/issues/components/issue-mention-card'
 
 /**
  * Render modes for markdown content:
@@ -43,6 +44,37 @@ export interface MarkdownProps {
   onFileClick?: (path: string) => void
 }
 
+/**
+ * Custom URL transform that allows mention:// protocol (used for @mentions)
+ * while keeping the default security for all other URLs.
+ */
+function urlTransform(url: string): string {
+  if (url.startsWith('mention://')) return url
+  return defaultUrlTransform(url)
+}
+
+/**
+ * Convert legacy mention shortcodes [@ id="UUID" label="LABEL"] to markdown
+ * link format [@LABEL](mention://member/UUID) so they render as styled mentions.
+ */
+function preprocessMentionShortcodes(text: string): string {
+  if (!text.includes('[@ ')) return text
+  return text.replace(
+    /\[@\s+([^\]]*)\]/g,
+    (match, attrString: string) => {
+      const attrs: Record<string, string> = {}
+      const re = /(\w+)="([^"]*)"/g
+      let m
+      while ((m = re.exec(attrString)) !== null) {
+        if (m[1] && m[2] !== undefined) attrs[m[1]] = m[2]
+      }
+      const { id, label } = attrs
+      if (!id || !label) return match
+      return `[@${label}](mention://member/${id})`
+    }
+  )
+}
+
 // File path detection regex - matches paths starting with /, ~/, or ./
 const FILE_PATH_REGEX =
   /^(?:\/|~\/|\.\/)[\w\-./@]+\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|yaml|yml|py|go|rs|css|scss|less|html|htm|txt|log|sh|bash|zsh|swift|kt|java|c|cpp|h|hpp|rb|php|xml|toml|ini|cfg|conf|env|sql|graphql|vue|svelte|astro|prisma)$/i
@@ -67,8 +99,13 @@ function createComponents(
     ),
     // Links: Make clickable with callbacks, or render as mention
     a: ({ href, children }) => {
-      // Mention links: mention://member/id or mention://agent/id
+      // Mention links: mention://member/id, mention://agent/id, mention://issue/id
       if (href?.startsWith('mention://')) {
+        const mentionMatch = href.match(/^mention:\/\/(member|agent|issue)\/(.+)$/)
+        if (mentionMatch?.[1] === 'issue' && mentionMatch[2]) {
+          const label = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : undefined
+          return <IssueMentionCard issueId={mentionMatch[2]} fallbackLabel={label} />
+        }
         return (
           <span className="text-primary font-semibold mx-0.5">
             {children}
@@ -282,14 +319,18 @@ export function Markdown({
     [mode, onUrlClick, onFileClick]
   )
 
-  // Preprocess to convert raw URLs and file paths to markdown links
-  const processedContent = React.useMemo(() => preprocessLinks(children), [children])
+  // Preprocess: convert mention shortcodes and raw URLs/file paths to markdown links
+  const processedContent = React.useMemo(
+    () => preprocessLinks(preprocessMentionShortcodes(children)),
+    [children]
+  )
 
   return (
     <div className={cn('markdown-content break-words', className)}>
       <ReactMarkdown
         remarkPlugins={[[remarkGfm, { singleTilde: false }]]}
         rehypePlugins={[rehypeRaw]}
+        urlTransform={urlTransform}
         components={components}
       >
         {processedContent}

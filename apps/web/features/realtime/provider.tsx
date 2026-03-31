@@ -16,7 +16,11 @@ import { useWorkspaceStore } from "@/features/workspace";
 import { createLogger } from "@/shared/logger";
 import { useRealtimeSync } from "./use-realtime-sync";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8080/ws";
+const WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (typeof window !== "undefined"
+    ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`
+    : "ws://localhost:8080/ws");
 
 type EventHandler = (payload: unknown) => void;
 

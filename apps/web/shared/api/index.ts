@@ -5,7 +5,7 @@ export { ApiClient } from "./client";
 export type { LoginResponse } from "./client";
 export { WSClient } from "./ws-client";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export const api = new ApiClient(API_BASE_URL, { logger: createLogger("api") });
 
