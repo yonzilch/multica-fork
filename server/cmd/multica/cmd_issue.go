@@ -123,6 +123,7 @@ func init() {
 	issueCreateCmd.Flags().String("parent", "", "Parent issue ID")
 	issueCreateCmd.Flags().String("due-date", "", "Due date (RFC3339 format)")
 	issueCreateCmd.Flags().String("output", "json", "Output format: table or json")
+	issueCreateCmd.Flags().StringSlice("attachment", nil, "File path(s) to attach (can be specified multiple times)")
 
 	// issue update
 	issueUpdateCmd.Flags().String("title", "", "New title")
@@ -276,7 +277,13 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	// Use a longer timeout when attachments are present (file uploads can be slow).
+	timeout := 15 * time.Second
+	attachments, _ := cmd.Flags().GetStringSlice("attachment")
+	if len(attachments) > 0 {
+		timeout = 60 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	body := map[string]any{"title": title}
@@ -307,6 +314,19 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 	var result map[string]any
 	if err := client.PostJSON(ctx, "/api/issues", body, &result); err != nil {
 		return fmt.Errorf("create issue: %w", err)
+	}
+
+	// Upload attachments and link them to the newly created issue.
+	issueID := strVal(result, "id")
+	for _, filePath := range attachments {
+		data, readErr := os.ReadFile(filePath)
+		if readErr != nil {
+			return fmt.Errorf("read attachment %s: %w", filePath, readErr)
+		}
+		if _, uploadErr := client.UploadFile(ctx, data, filePath, issueID); uploadErr != nil {
+			return fmt.Errorf("upload attachment %s: %w", filePath, uploadErr)
+		}
+		fmt.Fprintf(os.Stderr, "Uploaded %s\n", filePath)
 	}
 
 	output, _ := cmd.Flags().GetString("output")

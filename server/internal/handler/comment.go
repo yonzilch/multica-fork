@@ -148,7 +148,9 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		h.linkAttachmentsByIDs(r.Context(), comment.ID, issue.ID, req.AttachmentIDs)
 	}
 
-	resp := commentToResponse(comment, nil, nil)
+	// Fetch linked attachments so the response includes them.
+	groupedAtt := h.groupAttachments(r, []pgtype.UUID{comment.ID})
+	resp := commentToResponse(comment, nil, groupedAtt[uuidToString(comment.ID)])
 	slog.Info("comment created", append(logger.RequestAttrs(r), "comment_id", uuidToString(comment.ID), "issue_id", issueID)...)
 	h.publish(protocol.EventCommentCreated, uuidToString(issue.WorkspaceID), authorType, authorID, map[string]any{
 		"comment":             resp,

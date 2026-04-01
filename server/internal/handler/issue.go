@@ -36,6 +36,7 @@ type IssueResponse struct {
 	CreatedAt          string                  `json:"created_at"`
 	UpdatedAt          string                  `json:"updated_at"`
 	Reactions          []IssueReactionResponse `json:"reactions,omitempty"`
+	Attachments        []AttachmentResponse    `json:"attachments,omitempty"`
 }
 
 type agentTriggerSnapshot struct {
@@ -139,6 +140,18 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 		resp.Reactions = make([]IssueReactionResponse, len(reactions))
 		for i, rx := range reactions {
 			resp.Reactions[i] = issueReactionToResponse(rx)
+		}
+	}
+
+	// Fetch issue-level attachments.
+	attachments, err := h.Queries.ListAttachmentsByIssue(r.Context(), db.ListAttachmentsByIssueParams{
+		IssueID:     issue.ID,
+		WorkspaceID: issue.WorkspaceID,
+	})
+	if err == nil && len(attachments) > 0 {
+		resp.Attachments = make([]AttachmentResponse, len(attachments))
+		for i, a := range attachments {
+			resp.Attachments[i] = h.attachmentToResponse(a)
 		}
 	}
 
