@@ -18,12 +18,12 @@
   height: 0;
 }
 
-/* Headings */
+/* Headings — aligned with old Markdown minimal mode */
 .rich-text-editor h1 {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
   margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   line-height: 1.4;
 }
 
@@ -31,22 +31,22 @@
   font-size: 1rem;
   font-weight: 600;
   margin-top: 1rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   line-height: 1.4;
 }
 
 .rich-text-editor h3 {
   font-size: 0.875rem;
   font-weight: 600;
-  margin-top: 0.75rem;
-  margin-bottom: 0.25rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
   line-height: 1.4;
 }
 
 /* Paragraphs */
 .rich-text-editor p {
-  margin-top: 0.375rem;
-  margin-bottom: 0.375rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
   line-height: 1.625;
 }
 
@@ -63,19 +63,24 @@
 /* Lists */
 .rich-text-editor ul {
   list-style-type: disc;
-  padding-inline-start: 1.25rem;
-  margin: 0.375rem 0;
+  padding-inline-start: 1rem;
+  padding-inline-end: 0.5rem;
+  margin: 0.5rem 0;
 }
 
 .rich-text-editor ol {
   list-style-type: decimal;
-  padding-inline-start: 1.25rem;
-  margin: 0.375rem 0;
+  padding-inline-start: 1.5rem;
+  margin: 0.5rem 0;
 }
 
 .rich-text-editor li {
   margin: 0.125rem 0;
   line-height: 1.625;
+}
+
+.rich-text-editor li + li {
+  margin-top: 0.25rem;
 }
 
 .rich-text-editor li::marker {
@@ -85,10 +90,11 @@
 /* Inline code */
 .rich-text-editor code {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.8em;
-  background: var(--muted);
-  color: var(--foreground);
-  padding: 0.15em 0.35em;
+  font-size: 0.875rem;
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground) 5%, transparent);
+  color: color-mix(in srgb, var(--foreground) 75%, transparent);
+  padding: 0.125rem 0.375rem;
   border-radius: calc(var(--radius) * 0.6);
 }
 
@@ -104,6 +110,8 @@
 
 .rich-text-editor pre code {
   background: none;
+  border: none;
+  color: var(--foreground);
   padding: 0;
   font-size: 0.8125rem;
   line-height: 1.6;
@@ -166,12 +174,60 @@
 
 .dark .rich-text-editor .hljs-deletion { color: oklch(0.7 0.18 25); }
 
+/* Tables */
+.rich-text-editor .tableWrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.rich-text-editor table {
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+.rich-text-editor colgroup {
+  display: none;
+}
+
+.rich-text-editor thead {
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.rich-text-editor tbody tr {
+  border-top: 1px solid var(--border);
+}
+
+.rich-text-editor tr:hover td {
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+  transition: background 0.15s;
+}
+
+.rich-text-editor th,
+.rich-text-editor td {
+  text-align: left;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+}
+
+.rich-text-editor th {
+  font-weight: 600;
+}
+
+/* Remove paragraph margin inside table cells */
+.rich-text-editor th p,
+.rich-text-editor td p {
+  margin: 0;
+}
+
 /* Blockquotes */
 .rich-text-editor blockquote {
-  border-left: 2px solid var(--border);
+  border-left: 2px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
   padding-left: 0.75rem;
   margin: 0.5rem 0;
   color: var(--muted-foreground);
+  font-style: italic;
 }
 
 /* Horizontal rules */
@@ -183,8 +239,9 @@
 
 /* Links */
 .rich-text-editor a {
-  color: var(--brand);
+  color: var(--primary);
   text-decoration: none;
+  cursor: pointer;
 }
 
 .rich-text-editor a:hover {

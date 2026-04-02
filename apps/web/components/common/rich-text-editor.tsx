@@ -14,6 +14,10 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import Typography from "@tiptap/extension-typography";
 import Image from "@tiptap/extension-image";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
+import { Table } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -23,6 +27,7 @@ import type { UploadResult } from "@/shared/hooks/use-file-upload";
 import { BaseMentionExtension } from "./mention-extension";
 import { createMentionSuggestion } from "./mention-suggestion";
 import { CodeBlockView } from "./code-block-view";
+import { markdownToHtml } from "./markdown-to-html";
 import "./rich-text-editor.css";
 
 const lowlight = createLowlight(common);
@@ -307,8 +312,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const editor = useEditor({
       immediatelyRender: false,
       editable,
-      content: defaultValue || "",
-      contentType: defaultValue ? "markdown" : undefined,
+      content: defaultValue ? markdownToHtml(defaultValue) : "",
       extensions: [
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
@@ -342,6 +346,10 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           allowBase64: false,
           HTMLAttributes: { style: "max-width: 100%; height: auto;" },
         }),
+        Table.configure({ resizable: false }),
+        TableRow,
+        TableHeader,
+        TableCell,
         Markdown,
         createMarkdownPasteExtension(),
         createSubmitExtension(() => onSubmitRef.current?.()),

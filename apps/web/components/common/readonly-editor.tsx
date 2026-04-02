@@ -7,11 +7,15 @@ import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
+import { Table } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import { cn } from "@/lib/utils";
 import { BaseMentionExtension } from "./mention-extension";
 import { CodeBlockView } from "./code-block-view";
-import { preprocessLinks } from "@/components/markdown/linkify";
+import { markdownToHtml } from "./markdown-to-html";
 import "./rich-text-editor.css";
 
 const lowlight = createLowlight(common);
@@ -49,38 +53,12 @@ const extensions = [
       style: "max-width: 100%; height: auto;",
     },
   }),
+  Table.configure({ resizable: false }),
+  TableRow,
+  TableHeader,
+  TableCell,
   Markdown,
 ];
-
-// ---------------------------------------------------------------------------
-// Content preprocessing
-// ---------------------------------------------------------------------------
-
-/**
- * Convert legacy mention shortcodes [@ id="UUID" label="LABEL"] to markdown
- * link format [@LABEL](mention://member/UUID).
- */
-function preprocessMentionShortcodes(text: string): string {
-  if (!text.includes("[@ ")) return text;
-  return text.replace(
-    /\[@\s+([^\]]*)\]/g,
-    (match: string, attrString: string) => {
-      const attrs: Record<string, string> = {};
-      const re = /(\w+)="([^"]*)"/g;
-      let m;
-      while ((m = re.exec(attrString)) !== null) {
-        if (m[1] && m[2] !== undefined) attrs[m[1]] = m[2];
-      }
-      const { id, label } = attrs;
-      if (!id || !label) return match;
-      return `[@${label}](mention://member/${id})`;
-    },
-  );
-}
-
-function preprocess(content: string): string {
-  return preprocessLinks(preprocessMentionShortcodes(content));
-}
 
 // ---------------------------------------------------------------------------
 // ReadonlyEditor
@@ -94,14 +72,9 @@ interface ReadonlyEditorProps {
 /**
  * ReadonlyEditor — lightweight Tiptap wrapper for displaying markdown content.
  *
- * Uses the same ProseMirror engine and CSS as the editing RichTextEditor,
- * ensuring visual consistency between edit and display modes.
- *
- * Features:
- * - Issue mentions render as IssueMentionCard (inline card with status icon)
- * - Links are clickable (open in new tab)
- * - Code blocks have syntax highlighting and copy button
- * - Content is preprocessed: raw URL linkification + legacy mention format conversion
+ * Content is converted from markdown to HTML via `marked` before loading,
+ * bypassing @tiptap/markdown's beta parser which drops complex content.
+ * The Markdown extension is kept for getMarkdown() serialization only.
  */
 const ReadonlyEditor = memo(function ReadonlyEditor({
   content,
@@ -112,8 +85,7 @@ const ReadonlyEditor = memo(function ReadonlyEditor({
   const editor = useEditor({
     immediatelyRender: false,
     editable: false,
-    content: preprocess(content),
-    contentType: content ? "markdown" : undefined,
+    content: markdownToHtml(content),
     extensions,
     editorProps: {
       attributes: {
@@ -142,12 +114,7 @@ const ReadonlyEditor = memo(function ReadonlyEditor({
   useEffect(() => {
     if (!editor || content === prevContentRef.current) return;
     prevContentRef.current = content;
-    const processed = preprocess(content);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parsed = (editor.storage as any).markdown?.parse?.(processed);
-    if (parsed) {
-      editor.commands.setContent(parsed);
-    }
+    editor.commands.setContent(markdownToHtml(content));
   }, [editor, content]);
 
   if (!editor) return null;
