@@ -105,10 +105,9 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
     () => deduplicateInboxItems(inboxItems).filter((i) => !i.read).length,
     [inboxItems],
   );
-  const hasRuntimeUpdates = useMyRuntimesNeedUpdate();
+  const hasRuntimeUpdates = useMyRuntimesNeedUpdate(wsId);
 
   const logout = () => {
-    push("/");
     authLogout();
     useWorkspaceStore.getState().clearWorkspace();
   };

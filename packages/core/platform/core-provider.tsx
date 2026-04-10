@@ -18,7 +18,12 @@ import type { StorageAdapter } from "../types/storage";
 let initialized = false;
 let authStore: ReturnType<typeof createAuthStore>;
 let workspaceStore: ReturnType<typeof createWorkspaceStore>;
-function initCore(apiBaseUrl: string, storage: StorageAdapter) {
+function initCore(
+  apiBaseUrl: string,
+  storage: StorageAdapter,
+  onLogin?: () => void,
+  onLogout?: () => void,
+) {
   if (initialized) return;
 
   const api = new ApiClient(apiBaseUrl, {
@@ -36,7 +41,7 @@ function initCore(apiBaseUrl: string, storage: StorageAdapter) {
   const wsId = storage.getItem("multica_workspace_id");
   if (wsId) api.setWorkspaceId(wsId);
 
-  authStore = createAuthStore({ api, storage });
+  authStore = createAuthStore({ api, storage, onLogin, onLogout });
   registerAuthStore(authStore);
 
   workspaceStore = createWorkspaceStore(api, { storage });
@@ -54,9 +59,9 @@ export function CoreProvider({
   onLogout,
 }: CoreProviderProps) {
   // Initialize singletons on first render only. Dependencies are read-once:
-  // apiBaseUrl and storage are set at app boot and never change at runtime.
+  // apiBaseUrl, storage, and callbacks are set at app boot and never change at runtime.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => initCore(apiBaseUrl, storage), []);
+  useMemo(() => initCore(apiBaseUrl, storage, onLogin, onLogout), []);
 
   return (
     <QueryProvider>
