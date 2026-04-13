@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Minus, Maximize2, Minimize2, Send, ChevronDown, Bot, Plus, History } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@multica/ui/components/ui/avatar";
 import { Button } from "@multica/ui/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -257,46 +258,72 @@ export function ChatWindow() {
             onSelect={handleSelectAgent}
           />
           <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
-              onClick={() => setShowHistory(true)}
-              title="Chat history"
-            >
-              <History />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
-              onClick={() => {
-                setActiveSession(null);
-                clearTimeline();
-                setPendingTask(null);
-              }}
-              title="New chat"
-            >
-              <Plus />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
-              onClick={toggleExpand}
-              title={isAtMax ? "Restore" : "Expand"}
-            >
-              {isAtMax ? <Minimize2 /> : <Maximize2 />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
-              onClick={() => setOpen(false)}
-              title="Minimize"
-            >
-              <Minus />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground"
+                    onClick={() => setShowHistory(true)}
+                  />
+                }
+              >
+                <History />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Chat history</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground"
+                    onClick={() => {
+                      setActiveSession(null);
+                      clearTimeline();
+                      setPendingTask(null);
+                    }}
+                  />
+                }
+              >
+                <Plus />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">New chat</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground"
+                    onClick={toggleExpand}
+                  />
+                }
+              >
+                {isAtMax ? <Minimize2 /> : <Maximize2 />}
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {isAtMax ? "Restore" : "Expand"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground"
+                    onClick={() => setOpen(false)}
+                  />
+                }
+              >
+                <Minus />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Minimize</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       )}

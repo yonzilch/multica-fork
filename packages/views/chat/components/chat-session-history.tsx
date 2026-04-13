@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MessageSquare, Archive, Trash2 } from "lucide-react";
 import { Button } from "@multica/ui/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@multica/ui/components/ui/avatar";
 import { Bot } from "lucide-react";
 import { useWorkspaceId } from "@multica/core/hooks";
@@ -48,14 +49,21 @@ export function ChatSessionHistory() {
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 border-b px-4 py-2.5">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground"
-          onClick={() => setShowHistory(false)}
-        >
-          <ArrowLeft />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground"
+                onClick={() => setShowHistory(false)}
+              />
+            }
+          >
+            <ArrowLeft />
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Back</TooltipContent>
+        </Tooltip>
         <span className="text-sm font-medium">Chat History</span>
       </div>
 
