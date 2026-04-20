@@ -116,8 +116,10 @@ func New(agentType string, cfg Config) (Backend, error) {
 		return &piBackend{cfg: cfg}, nil
 	case "cursor":
 		return &cursorBackend{cfg: cfg}, nil
+	case "picoclaw":
+    	return &picoclawBackend{cfg: cfg}, nil
 	default:
-		return nil, fmt.Errorf("unknown agent type: %q (supported: claude, codex, copilot, opencode, openclaw, hermes, gemini, pi, cursor)", agentType)
+		return nil, fmt.Errorf("unknown agent type: %q (supported: claude, codex, copilot, opencode, openclaw, hermes, gemini, pi, cursor, picoclaw)", agentType)
 	}
 }
 
