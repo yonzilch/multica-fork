@@ -163,6 +163,20 @@ export function OpenCodeLogo({ className }: { className?: string }) {
   );
 }
 
+export function PicoClawLogo({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+    >
+      <rect x="2" y="2" width="12" height="12" fill="#ff4f40" />
+      <rect x="4" y="4" width="8" height="8" fill="#ffffff" />
+    </svg>
+  );
+}
+
 export function headerButtonClassName(
   tone: "ghost" | "solid",
   variant: "dark" | "light" = "dark",

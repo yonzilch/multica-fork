@@ -10,6 +10,7 @@ import {
   GeminiCliLogo,
   OpenClawLogo,
   OpenCodeLogo,
+  PicoClawLogo,
   heroButtonClassName,
 } from "./shared";
 
@@ -38,7 +39,10 @@ export function LandingHero() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link href={user ? "/" : "/login"} className={heroButtonClassName("solid")}>
+              <Link
+                href={user ? "/" : "/login"}
+                className={heroButtonClassName("solid")}
+              >
                 {user ? t.header.dashboard : t.hero.cta}
               </Link>
               <Link
@@ -90,6 +94,10 @@ export function LandingHero() {
               <div className="flex items-center gap-2.5 text-white/80">
                 <OpenCodeLogo className="size-5" />
                 <span className="text-[15px] font-medium">OpenCode</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-white/80">
+                <PicoClawLogo className="size-5" />
+                <span className="text-[15px] font-medium">PicoClaw</span>
               </div>
             </div>
           </div>
